@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>403教室線上即時選位與核實系統</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --border-color: #707070;
+            --booked-bg: #e8f4f8;
+            --booked-text: #2c3e50;
+            --volunteer-bg: #fff2cc;
+            --volunteer-text: #d68910;
+            --status-match: #d4edda;
+            --status-mismatch: #f8d7da;
+        }
+
+        body { font-family: "Microsoft JhengHei", Arial, sans-serif; background-color: #f8f9fa; margin: 0; padding: 10px; color: #000; }
+
+        /* 導覽列 */
+        .nav-bar { display: flex; justify-content: space-between; background: #2c3e50; padding: 10px; margin: -10px -10px 15px -10px; align-items: center; }
+        .nav-bar span { color: white; font-weight: bold; font-size: 15px; padding-left: 5px; }
+        .nav-btn { background: #34495e; color: white; border: 1px solid #455a64; padding: 6px 12px; cursor: pointer; font-size: 13px; border-radius: 4px; }
+
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .main-container { max-width: 100%; margin: 0 auto; background: #fff; padding: 15px 10px; box-sizing: border-box; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+        .class-info-header { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 15px; color: #111; word-break: break-all; }
+
+        .stage-area { display: flex; justify-content: center; margin: 10px 0 20px 0; }
+        .stage-box { border: 1px solid var(--border-color); padding: 8px 30px; font-size: 14px; font-weight: bold; background: #f2f2f2; }
+
+        .classroom-grid { display: flex; justify-content: center; align-items: stretch; overflow-x: auto; padding-bottom: 15px; margin-top: 10px; }
+
+        /* 403 教室專屬配置：左側門位 */
+        .door-notice-left { width: 45px; font-size: 13px; font-weight: bold; color: #ff0000; display: flex; flex-direction: column; text-align: center; justify-content: space-between; padding-top: 5px; padding-bottom: 5px; margin-right: 5px; } 
+
+        .seat-table { border-collapse: separate; border-spacing: 5px; min-width: 300px; }
+        .seat-table td { border: 1px solid var(--border-color); text-align: center; vertical-align: middle; width: 75px; height: 50px; font-size: 13px; font-weight: bold; background-color: #fff; cursor: pointer; border-radius: 4px; }
+        .seat-table td.booked { background-color: var(--booked-bg); color: var(--booked-text); }
+        .seat-table td.verified-match { background-color: var(--status-match) !important; color: #155724 !important; border-color: #c3e6cb; }
+        .seat-table td.verified-error { background-color: var(--status-mismatch) !important; color: #721c24 !important; border-color: #f5c6cb; }
+        .seat-table td.volunteer-seat { background-color: var(--volunteer-bg); color: var(--volunteer-text); border: 1px solid var(--volunteer-text); font-size: 12px; cursor: default; }
+
+        .scroll-hint { text-align: center; font-size: 11px; color: #7f8c8d; margin-bottom: 10px; }
+        @media (min-width: 768px) { .scroll-hint { display: none; } }
+
+        /* 彈出視窗 */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 9999; }
+        .modal-body { background: #fff; padding: 20px; border-radius: 8px; width: 85%; max-width: 320px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .modal-body input { width: 90%; padding: 10px; margin: 12px 0; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; text-align: center; box-sizing: border-box; }
+        .modal-btns { display: flex; justify-content: space-around; margin-top: 15px; gap: 8px; }
+        .btn { padding: 8px 14px; border: 1px solid #707070; background: #f2f2f2; cursor: pointer; font-size: 14px; border-radius: 4px; flex: 1; }
+        .btn-ok { background: #d4edda; color: #155724; border-color: #c3e6cb; font-weight: bold; }
+        .btn-clear { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+
+        .modal-notice-box { background: #fff9f9; border: 1px solid #ffcccc; border-radius: 4px; padding: 10px; margin: 10px 0; text-align: left; font-size: 12px; color: #cc0000; line-height: 1.5; font-weight: bold; }
+
+        /* 後台樣式 */
+        .admin-box { background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto; }
+        .admin-box h3 { margin-top: 0; color: #2c3e50; border-left: 4px solid #2980b9; padding-left: 8px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #333; }
+        .form-group textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; resize: vertical; }
+        
+        .btn-admin-act { width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; color: white; margin-bottom: 10px; }
+        .btn-blue { background-color: #2980b9; }
+        .btn-orange { background-color: #e67e22; }
+        .btn-gray { background-color: #7f8c8d; }
+        .btn-purple { background-color: #8e44ad; }
+        .btn-green { background-color: #27ae60; }
+        .btn-red { background-color: #c0392b; }
+        
+        .report-box { background: #fdfefe; border: 1px solid #ddd; padding: 15px; border-radius: 4px; font-size: 13px; margin-top: 15px; line-height: 1.6; display: none; }
+        
+        .qrcode-container { background: #fff; border: 1px solid #ccc; padding: 15px; margin: 15px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 6px; }
+        .qrcode-url-text { font-size: 12px; color: #555; word-break: break-all; margin-top: 10px; background: #eee; padding: 8px; width: 100%; box-sizing: border-box; text-align: center; border-radius: 4px; }
+
+        .admin-modification-box { background: #f4f6f7; border: 1px solid #d5dbdb; padding: 15px; border-radius: 5px; margin-top: 20px; }
+        .pwd-section { margin-top: 25px; padding-top: 15px; border-top: 1px dashed #ccc; }
+
+        @media print {
+            body { background-color: #fff; padding: 0; margin: 0; }
+            .nav-bar, #adminPage, .scroll-hint, .modal-overlay { display: none !important; }
+            #studentPage { display: block !important; }
+            .main-container { box-shadow: none; padding: 0; margin: 0; }
+            .seat-table td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="nav-bar">
+        <span>公務人力發展中心選位系統 (403教室)</span>
+        <button class="nav-btn" id="navToggleBtn" onclick="openLoginModal()">管理後台</button>
+    </div>
+
+    <div id="studentPage" class="page active">
+        <div class="main-container">
+            <div class="class-info-header" id="displayClassHeader">
+                403教室線上選位表 (請由管理員自後台載入班期)
+            </div>
+            <div class="scroll-hint">⇿ 手機用戶可左右滑動查看 ⇿</div>
+
+            <div class="stage-area">
+                <div class="stage-box">講台(白板)</div>
+            </div>
+
+            <div class="classroom-grid">
+                <div class="door-notice-left">
+                    <div>前門</div>
+                    <div>後門</div>
+                </div>
+
+                <table class="seat-table" id="classroomSeats">
+                    </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminPage" class="page">
+        <div class="admin-box">
+            <h3>⚙️ 403教室 - 系統管理後台</h3>
+            
+            <div class="form-group">
+                <label>【步驟一】請複製 Word 名冊內的「所有文字」並貼在下方：</label>
+                <textarea id="rawRosterInput" rows="5" placeholder="請在 Word 檔案中按 Ctrl+A 全選、Ctrl+C 複製，然後直接在此貼上..."></textarea>
+            </div>
+
+            <button class="btn-admin-act btn-blue" onclick="processRosterText()">【步驟二】一鍵解析並啟動班期</button>
+            
+            <div id="qrcodeWrapper" class="qrcode-container" style="display: none;">
+                <strong style="color: #2c3e50; margin-bottom: 10px; font-size:14px;">📱 當前班期專屬 QR Code (供學員掃描)</strong>
+                <div id="qrcode"></div>
+                <div class="qrcode-url-text" id="qrcodeUrl"></div>
+            </div>
+
+            <button class="btn-admin-act btn-orange" onclick="verifyFilledSeats()">【步驟三】一鍵與名冊核實比對</button>
+            <button class="btn-admin-act btn-gray" onclick="clearVerificationStatus()">清除核實燈號</button>
+            <button class="btn-admin-act btn-purple" onclick="exportCurrentClassSeats()">🖨️ 匯出當前座位表（存檔）</button>
+
+            <div class="report-box" id="adminReport"></div>
+
+            <div class="admin-modification-box">
+                <h4 style="margin: 0 0 10px 0; color: #2c3e50;">✍️ 管理員人工座位修正面板</h4>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 100px;">
+                        <label style="font-size: 12px; font-weight: bold; color:#555;">座位 (例: 1-1)</label>
+                        <input type="text" id="modSeatId" placeholder="排-欄" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                    </div>
+                    <div style="flex: 2; min-width: 150px;">
+                        <label style="font-size: 12px; font-weight: bold; color:#555;">正確學員姓名</label>
+                        <input type="text" id="modStudentName" placeholder="輸入姓名" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-admin-act btn-green" style="margin-bottom:0; padding: 10px; font-size:13px;" onclick="adminForceAssignSeat()">寫入該位子</button>
+                    <button class="btn-admin-act btn-red" style="margin-bottom:0; padding: 10px; font-size:13px;" onclick="adminForceClearSeat()">清除該位子</button>
+                </div>
+            </div>
+
+            <div class="pwd-section">
+                <h4 style="margin: 0 0 10px 0; color: #7f8c8d;">🔒 安全設定</h4>
+                <div style="display:flex; gap:10px;">
+                    <input type="password" id="newPasswordInput" placeholder="輸入新密碼" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                    <button class="btn-admin-act btn-green" style="width:auto; margin-bottom:0; padding: 8px 15px; font-size: 13px;" onclick="changeAdminPassword()">變更密碼</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-body">
+            <h3 style="margin: 0 0 10px 0; color:#333;">管理者登入</h3>
+            <p style="font-size: 13px; color: #666; margin: 0 0 10px 0;">請輸入後台密碼 (預設為 403)：</p>
+            <input type="password" id="adminPasswordInput" placeholder="請輸入密碼">
+            <div class="modal-btns">
+                <button class="btn" onclick="closeLoginModal()">取消</button>
+                <button class="btn btn-ok" onclick="submitLogin()">登入</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="seatModal">
+        <div class="modal-body">
+            <h3 id="targetSeatLabel" style="margin: 0; color:#333;">座位 1-1</h3>
+            <div class="modal-notice-box">
+                1. 請按照座位表入座。<br>
+                2. 請假請掃描 Qrcode 填寫表單。<br>
+                3. 缺席逾 15 分鐘者視同曠課。
+            </div>
+            <p style="font-size: 13px; color: #444; margin: 10px 0 5px 0; font-weight:bold;" id="inputLabelText">請填寫您的真實姓名：</p>
+            <input type="text" id="studentName" placeholder="請輸入姓名" autocomplete="off">
+            <div class="modal-btns">
+                <button class="btn" onclick="closeSelectModal()">關閉</button>
+                <button class="btn btn-clear" id="btnCancelSeat" onclick="clearCurrentSeat()">取消座位</button>
+                <button class="btn btn-ok" id="btnSubmitSeat" onclick="saveStudentSeat()">確認提交</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // ✅ 已經為您直接替換好 Firebase 網址！
+    const FIREBASE_URL = "https://seat-302-115552-default-rtdb.firebaseio.com";
+
+    let currentPage = "student"; 
+    let activeSeatId = "";      
+    let isVerifyVisualOn = false; 
+
+    // 403教室預設密碼為 403
+    let adminPassword = localStorage.getItem("seat_admin_pwd_403") || "403"; 
+    let currentClassID = getUrlParam("class") || ""; 
+
+    let dbTitles = JSON.parse(localStorage.getItem("seat_db_titles_403")) || {};
+    let dbRosters = JSON.parse(localStorage.getItem("seat_db_rosters_403")) || {};
+    
+    let classHeaderTitle = dbTitles[currentClassID] || "403教室線上選位表 (請由管理員自後台載入班期)";
+    let officialRoster = dbRosters[currentClassID] || [];
+    let studentFilledData = {}; 
+
+    function getUrlParam(name) {
+        return new URLSearchParams(window.location.search).get(name);
+    }
+
+    // 啟動雲端即時同步
+    function startRealtimeSync() {
+        if (!currentClassID || FIREBASE_URL === "YOUR_FIREBASE_URL") return;
+        
+        const syncUrl = `${FIREBASE_URL}/classes/${currentClassID}/seats.json`;
+        const eventSource = new EventSource(syncUrl);
+
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            // 處理 Firebase 傳回的完整或增量更新
+            if (data && data.path === "/") {
+                studentFilledData = data.data || {};
+            } else if (data && data.path) {
+                const cleanKey = data.path.replace("/", "");
+                if (cleanKey) {
+                    if (data.data === null) delete studentFilledData[cleanKey];
+                    else studentFilledData[cleanKey] = data.data;
+                }
+            } else if (event.data && !data.path) {
+                studentFilledData = data || {};
+            }
+            // 資料更新後，強制刷新畫面
+            renderSeatsGrid();
+        };
+        
+        // 啟動時先主動抓取一次，避免 EventSource 延遲
+        fetchSeatsDataLegacy();
+    }
+
+    async function fetchSeatsDataLegacy() {
+        if (!currentClassID || FIREBASE_URL === "YOUR_FIREBASE_URL") return;
+        try {
+            const res = await fetch(`${FIREBASE_URL}/classes/${currentClassID}/seats.json`);
+            const data = await res.json();
+            studentFilledData = data || {};
+            renderSeatsGrid();
+        } catch(e) { console.error("雲端同步連線中..."); }
+    }
+
+    async function updateCloudSeat(seatId, name) {
+        if (!currentClassID || FIREBASE_URL === "YOUR_FIREBASE_URL") return true;
+        try {
+            let url = `${FIREBASE_URL}/classes/${currentClassID}/seats/${seatId}.json`;
+            if (name === null) {
+                await fetch(url, { method: 'DELETE' });
+            } else {
+                await fetch(url, { method: 'PUT', body: JSON.stringify(name) });
+            }
+            return true;
+        } catch (e) {
+            alert("網路連線不穩定，請重新提交。");
+            return false;
+        }
+    }
+
+    function openLoginModal() {
+        if (currentPage === "student") {
+            document.getElementById("adminPasswordInput").value = "";
+            document.getElementById("loginModal").style.display = "flex";
+            document.getElementById("adminPasswordInput").focus();
+        } else {
+            document.getElementById("adminPage").classList.remove("active");
+            document.getElementById("studentPage").classList.add("active");
+            document.getElementById("navToggleBtn").innerText = "管理後台";
+            currentPage = "student";
+        }
+    }
+
+    function closeLoginModal() { document.getElementById("loginModal").style.display = "none"; }
+
+    function submitLogin() {
+        if (document.getElementById("adminPasswordInput").value === adminPassword) {
+            closeLoginModal();
+            document.getElementById("studentPage").classList.remove("active");
+            document.getElementById("adminPage").classList.add("active");
+            document.getElementById("navToggleBtn").innerText = "返回前台";
+            currentPage = "admin";
+            if (currentClassID) generateClassQRCode(currentClassID);
+        } else {
+            alert("密碼錯誤！");
+        }
+    }
+
+    function changeAdminPassword() {
+        const newPwd = document.getElementById("newPasswordInput").value.trim();
+        if (!newPwd) { alert("密碼不可為空！"); return; }
+        if (confirm(`確定要將密碼修改為「${newPwd}」嗎？`)) {
+            adminPassword = newPwd;
+            localStorage.setItem("seat_admin_pwd_403", newPwd);
+            document.getElementById("newPasswordInput").value = "";
+            alert("密碼修改成功！");
+        }
+    }
+
+    // ★ 403 教室專屬網格渲染 (9排 x 4欄，9-1為報到桌/志工席)
+    function renderSeatsGrid() {
+        document.getElementById("displayClassHeader").innerText = classHeaderTitle;
+        const table = document.getElementById("classroomSeats");
+        let html = "";
+
+        for (let row = 1; row <= 9; row++) {
+            html += "<tr>";
+            for (let col = 1; col <= 4; col++) {
+                // 9-1 志工/報到席位設定 (根據 XLSX 設定，不坐人)
+                if (row === 9 && col === 1) {
+                    html += `<td class="volunteer-seat">報到桌<br>(不坐人)</td>`;
+                } else {
+                    const seatCode = `${row}-${col}`;
+                    const name = studentFilledData[seatCode];
+                    
+                    if (name) {
+                        let tdClass = "booked";
+                        if (isVerifyVisualOn) {
+                            tdClass = officialRoster.includes(name) ? "verified-match" : "verified-error";
+                        }
+                        html += `<td class="${tdClass}" onclick="handleSeatClick('${seatCode}')">${name}</td>`;
+                    } else {
+                        html += `<td onclick="handleSeatClick('${seatCode}')">${seatCode}</td>`;
+                    }
+                }
+            }
+            html += "</tr>";
+        }
+        table.innerHTML = html;
+    }
+
+    // 後台名冊解析
+    async function processRosterText() {
+        const text = document.getElementById("rawRosterInput").value;
+        if (!text.trim()) { alert("請先貼入名冊文字內容！"); return; }
+
+        try {
+            let classCode = "000000";
+            let className = "新研習班期";
+            const codeMatch = text.match(/(\d{6})[「"']?([^「」"'\s]+)[開班]?[」"']?/);
+            if (codeMatch) {
+                classCode = codeMatch[1];
+                className = `「${codeMatch[2]}」`;
+            }
+
+            let formattedDate = "";
+            const dateMatch = text.match(/受訓日期：(\d+)年(\d+)月(\d+)日/);
+            if (dateMatch) {
+                const westernYear = parseInt(dateMatch[1]) + 1911;
+                formattedDate = `${westernYear}.${dateMatch[2].padStart(2,'0')}.${dateMatch[3].padStart(2,'0')}`;
+            } else {
+                const today = new Date();
+                formattedDate = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
+            }
+
+            currentClassID = classCode;
+            classHeaderTitle = `${classCode}${className}-${formattedDate}`;
+
+            const cleanText = text.replace(/高雄市政府公務人力發展中心/g, " ")
+                                  .replace(/主任|秘書|組長|副研究員|輔導員|組員|助理員|技士|辦事員|駐衛隊員|技工|駕駛|工友/g, " ");
+            const tokens = cleanText.split(/[\s\t\n\r ]+/);
+            const excludeWords = ["座號", "機關學校", "職稱", "姓名", "受訓日期", "至", "共", "小時", "學員名冊", "班期", "從檢測到防禦的完整漏洞管理流程座位表"];
+            const nameSet = new Set();
+            const nameRegex = /^[\u4e00-\u9fa5]{2,4}$/;
+
+            tokens.forEach(token => {
+                const clean = token.trim();
+                if (nameRegex.test(clean) && !excludeWords.includes(clean) && !clean.includes("年") && !clean.includes("月") && !clean.includes("日")) {
+                    nameSet.add(clean);
+                }
+            });
+            officialRoster = Array.from(nameSet);
+
+            // 存入 LocalStorage 確保重整不遺失後台資料 (403專屬Key)
+            dbTitles[currentClassID] = classHeaderTitle;
+            dbRosters[currentClassID] = officialRoster;
+            localStorage.setItem("seat_db_titles_403", JSON.stringify(dbTitles));
+            localStorage.setItem("seat_db_rosters_403", JSON.stringify(dbRosters));
+
+            // 同步標題至 Firebase
+            if(FIREBASE_URL !== "YOUR_FIREBASE_URL") {
+                await fetch(`${FIREBASE_URL}/classes/${currentClassID}/title.json`, { method: 'PUT', body: JSON.stringify(classHeaderTitle) });
+            }
+
+            const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+            alert(`【開班成功】\n403教室班期 ${currentClassID} 已完成建立！`);
+            window.location.href = `${baseUrl}?class=${currentClassID}`;
+
+        } catch (err) {
+            alert("解析錯誤，請確認文字內包含完整的名冊結構。");
+        }
+    }
+
+    function generateClassQRCode(classId) {
+        if(!classId) return;
+        const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+        const targetClassUrl = `${baseUrl}?class=${classId}`;
+
+        document.getElementById("qrcodeWrapper").style.display = "flex";
+        document.getElementById("qrcodeUrl").innerText = targetClassUrl;
+        document.getElementById("qrcode").innerHTML = "";
+
+        new QRCode(document.getElementById("qrcode"), {
+            text: targetClassUrl, width: 160, height: 160, colorDark : "#2c3e50", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.M
+        });
+    }
+
+    function handleSeatClick(seatCode) {
+        if (!currentClassID) {
+            alert("目前尚未由後台載入班期。請先由管理員至後台貼入名冊開班！");
+            return;
+        }
+        activeSeatId = seatCode;
+        
+        const existingName = studentFilledData[seatCode] || "";
+        document.getElementById("targetSeatLabel").innerText = `座位 ${seatCode}`;
+        document.getElementById("studentName").value = existingName;
+        
+        if (existingName) {
+            document.getElementById("btnCancelSeat").style.display = "inline-block";
+            document.getElementById("inputLabelText").innerText = "目前登記學員：";
+            document.getElementById("studentName").disabled = true; 
+            document.getElementById("btnSubmitSeat").style.display = "none"; 
+        } else {
+            document.getElementById("btnCancelSeat").style.display = "none";
+            document.getElementById("inputLabelText").innerText = "請填寫您的真實姓名：";
+            document.getElementById("studentName").disabled = false;
+            document.getElementById("btnSubmitSeat").style.display = "inline-block";
+        }
+        document.getElementById("seatModal").style.display = "flex";
+    }
+
+    function closeSelectModal() { document.getElementById("seatModal").style.display = "none"; }
+
+    async function clearCurrentSeat() {
+        if (confirm(`確定要取消座位 ${activeSeatId} 的登記嗎？`)) {
+            // 先本機更新，確保 UI 瞬間反應
+            delete studentFilledData[activeSeatId];
+            renderSeatsGrid();
+            closeSelectModal();
+            // 後端同步
+            await updateCloudSeat(activeSeatId, null);
+        }
+    }
+
+    async function saveStudentSeat() {
+        const name = document.getElementById("studentName").value.trim();
+        if (!name) { alert("請輸入姓名！"); return; }
+
+        // 雲端防搶位檢查
+        if(FIREBASE_URL !== "YOUR_FIREBASE_URL") {
+            try {
+                const res = await fetch(`${FIREBASE_URL}/classes/${currentClassID}/seats.json`);
+                const latestClassData = await res.json() || {};
+
+                if (latestClassData[activeSeatId]) {
+                    alert(`【位置已被搶先登記】\n這個座位剛剛已被「${latestClassData[activeSeatId]}」登記了！請重選空位。`);
+                    studentFilledData = latestClassData;
+                    renderSeatsGrid();
+                    closeSelectModal();
+                    return;
+                }
+
+                if (Object.entries(latestClassData).some(([id, n]) => n === name)) {
+                    alert(`【禁止重複選位】\n「${name}」您目前已登記過其他座位囉！\n每人限選一位。如欲換位，請先取消原先座位。`);
+                    return;
+                }
+            } catch(e) { console.error("防搶檢查異常", e); }
+        }
+
+        // 先本機更新，確保 UI 瞬間反應
+        studentFilledData[activeSeatId] = name;
+        renderSeatsGrid();
+        closeSelectModal();
+        // 後端同步
+        await updateCloudSeat(activeSeatId, name);
+    }
+
+    async function adminForceAssignSeat() {
+        if (!currentClassID) { alert("請先啟動班期！"); return; }
+        const seatId = document.getElementById("modSeatId").value.trim();
+        const studentName = document.getElementById("modStudentName").value.trim();
+
+        if (!seatId || !studentName) { alert("請輸入座位編號與姓名！"); return; }
+        if (!/^([1-9])-([1-4])$/.test(seatId)) { alert("座位格式錯誤 (403教室正確為 1-1 到 9-4)！"); return; }
+        if (seatId === "9-1") { alert("9-1 為固定志工/報到席，不可指派。"); return; }
+
+        studentFilledData[seatId] = studentName;
+        renderSeatsGrid();
+        await updateCloudSeat(seatId, studentName);
+        
+        document.getElementById("modSeatId").value = "";
+        document.getElementById("modStudentName").value = "";
+        alert(`【強制更新】座位 ${seatId} 已寫入「${studentName}」。`);
+    }
+
+    async function adminForceClearSeat() {
+        if (!currentClassID) { alert("請先啟動班期！"); return; }
+        const seatId = document.getElementById("modSeatId").value.trim();
+        if (!seatId) { alert("請輸入座位編號！"); return; }
+
+        if (confirm(`確定要強制清除座位 ${seatId} 嗎？`)) {
+            delete studentFilledData[seatId];
+            renderSeatsGrid();
+            await updateCloudSeat(seatId, null);
+            document.getElementById("modSeatId").value = "";
+            alert(`【強制清除】座位 ${seatId} 已清空。`);
+        }
+    }
+
+    function verifyFilledSeats() {
+        if (!currentClassID || officialRoster.length === 0) { alert("請先貼入名冊建立班期！"); return; }
+        isVerifyVisualOn = true;
+        renderSeatsGrid(); 
+
+        const filledNames = Object.values(studentFilledData);
+        let matchCount = 0;
+        let errorNames = [];
+
+        filledNames.forEach(name => {
+            if (officialRoster.includes(name)) matchCount++;
+            else errorNames.push(name);
+        });
+
+        const missingStudents = officialRoster.filter(name => !filledNames.includes(name));
+        const report = document.getElementById("adminReport");
+        report.style.display = "block";
+        report.innerHTML = `
+            <strong>📊 班期 [${currentClassID}] 即時核實對比報告：</strong><br>
+            • 官方應到人數：${officialRoster.length} 人<br>
+            • 現場已填座位：${filledNames.length} 人<br>
+            • <span style="color:green; font-weight:bold;">符合官方名冊：${matchCount} 人 (綠色)</span><br>
+            • <span style="color:red; font-weight:bold;">名字不符/查無此人：${errorNames.length} 人 (紅色) ${errorNames.length > 0 ? `[${errorNames.join('、')}]` : ''}</span><br>
+            • <span>應到未選位：${missingStudents.length} 人 [${missingStudents.length > 0 ? missingStudents.join('、') : '無'}]</span>
+        `;
+    }
+
+    function clearVerificationStatus() {
+        isVerifyVisualOn = false;
+        document.getElementById("adminReport").style.display = "none";
+        renderSeatsGrid();
+    }
+
+    function exportCurrentClassSeats() {
+        if (!currentClassID) { alert("目前沒有班期資料可供列印。"); return; }
+        window.print();
+    }
+
+    // 啟動程序
+    window.onload = async function() {
+        // 1. 強制第一時間畫出網格與標題 (保證畫面不空白)
+        renderSeatsGrid();
+
+        if (currentClassID) {
+            // 2. 背景嘗試從 Firebase 抓取最新的標題名稱
+            if(FIREBASE_URL !== "YOUR_FIREBASE_URL" && !dbTitles[currentClassID]) {
+                try {
+                    const tRes = await fetch(`${FIREBASE_URL}/classes/${currentClassID}/title.json`);
+                    const tData = await tRes.json();
+                    if(tData) {
+                        classHeaderTitle = tData;
+                        renderSeatsGrid();
+                    }
+                } catch(e){}
+            }
+            // 3. 啟動 Firebase 監聽與 QR Code 生成
+            startRealtimeSync();
+            generateClassQRCode(currentClassID);
+        }
+    };
+</script>
+</body>
+</html>
