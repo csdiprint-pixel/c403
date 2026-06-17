@@ -163,7 +163,7 @@
             </div>
 
             <div class="pwd-section">
-                <h4 style="margin: 0 0 10px 0; color: #7f8c8d;">🔒 安全設定</h4>
+                <h4 style="margin: 0 0 10px 0; color: #7f8c8d;">🔒 雲端安全設定 (跨裝置即時同步)</h4>
                 <div style="display:flex; gap:10px;">
                     <input type="password" id="newPasswordInput" placeholder="輸入新密碼" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px;">
                     <button class="btn-admin-act btn-green" style="width:auto; margin-bottom:0; padding: 8px 15px; font-size: 13px;" onclick="changeAdminPassword()">變更密碼</button>
@@ -203,15 +203,15 @@
     </div>
 
 <script>
-    // ✅ 已經為您直接替換好 Firebase 網址！
+    // ✅ 已經為您設定好 Firebase 網址
     const FIREBASE_URL = "https://seat-302-115552-default-rtdb.firebaseio.com";
 
     let currentPage = "student"; 
     let activeSeatId = "";      
     let isVerifyVisualOn = false; 
 
-    // 403教室預設密碼為 403
-    let adminPassword = localStorage.getItem("seat_admin_pwd_403") || "403"; 
+    // 密碼初始預設值
+    let adminPassword = "403"; 
     let currentClassID = getUrlParam("class") || ""; 
 
     let dbTitles = JSON.parse(localStorage.getItem("seat_db_titles_403")) || {};
@@ -227,7 +227,7 @@
 
     // 啟動雲端即時同步
     function startRealtimeSync() {
-        if (!currentClassID || FIREBASE_URL === "YOUR_FIREBASE_URL") return;
+        if (!currentClassID) return;
         
         const syncUrl = `${FIREBASE_URL}/classes/${currentClassID}/seats.json`;
         const eventSource = new EventSource(syncUrl);
@@ -235,7 +235,6 @@
         eventSource.onmessage = function(event) {
             const data = JSON.parse(event.data);
             
-            // 處理 Firebase 傳回的完整或增量更新
             if (data && data.path === "/") {
                 studentFilledData = data.data || {};
             } else if (data && data.path) {
@@ -247,26 +246,23 @@
             } else if (event.data && !data.path) {
                 studentFilledData = data || {};
             }
-            // 資料更新後，強制刷新畫面
             renderSeatsGrid();
         };
-        
-        // 啟動時先主動抓取一次，避免 EventSource 延遲
         fetchSeatsDataLegacy();
     }
 
     async function fetchSeatsDataLegacy() {
-        if (!currentClassID || FIREBASE_URL === "YOUR_FIREBASE_URL") return;
+        if (!currentClassID) return;
         try {
             const res = await fetch(`${FIREBASE_URL}/classes/${currentClassID}/seats.json`);
             const data = await res.json();
             studentFilledData = data || {};
             renderSeatsGrid();
-        } catch(e) { console.error("雲端同步連線中..."); }
+        } catch(e) {}
     }
 
     async function updateCloudSeat(seatId, name) {
-        if (!currentClassID || FIREBASE_URL === "YOUR_FIREBASE_URL") return true;
+        if (!currentClassID) return true;
         try {
             let url = `${FIREBASE_URL}/classes/${currentClassID}/seats/${seatId}.json`;
             if (name === null) {
@@ -296,8 +292,18 @@
 
     function closeLoginModal() { document.getElementById("loginModal").style.display = "none"; }
 
-    function submitLogin() {
-        if (document.getElementById("adminPasswordInput").value === adminPassword) {
+    // ★ 密碼同步：加入 ?t=時間戳記，強制打破瀏覽器快取，確保立刻抓到手機剛改的新密碼
+    async function submitLogin() {
+        const inputPwd = document.getElementById("adminPasswordInput").value;
+        
+        try {
+            const noCacheUrl = `${FIREBASE_URL}/settings/pwd_403.json?t=${new Date().getTime()}`;
+            const pwdRes = await fetch(noCacheUrl, { cache: "no-store" });
+            const pwdData = await pwdRes.json();
+            if (pwdData) adminPassword = pwdData;
+        } catch(e) { console.error("無法連線至雲端核對密碼"); }
+
+        if (inputPwd === adminPassword) {
             closeLoginModal();
             document.getElementById("studentPage").classList.remove("active");
             document.getElementById("adminPage").classList.add("active");
@@ -309,14 +315,19 @@
         }
     }
 
-    function changeAdminPassword() {
+    // ★ 密碼同步：變更密碼時，直接寫入雲端
+    async function changeAdminPassword() {
         const newPwd = document.getElementById("newPasswordInput").value.trim();
         if (!newPwd) { alert("密碼不可為空！"); return; }
         if (confirm(`確定要將密碼修改為「${newPwd}」嗎？`)) {
             adminPassword = newPwd;
-            localStorage.setItem("seat_admin_pwd_403", newPwd);
-            document.getElementById("newPasswordInput").value = "";
-            alert("密碼修改成功！");
+            try {
+                await fetch(`${FIREBASE_URL}/settings/pwd_403.json`, { method: 'PUT', body: JSON.stringify(newPwd) });
+                document.getElementById("newPasswordInput").value = "";
+                alert("密碼修改成功！所有裝置已即時同步生效。");
+            } catch(e) {
+                alert("密碼同步失敗，請檢查網路連線。");
+            }
         }
     }
 
@@ -329,7 +340,6 @@
         for (let row = 1; row <= 9; row++) {
             html += "<tr>";
             for (let col = 1; col <= 4; col++) {
-                // 9-1 志工/報到席位設定 (根據 XLSX 設定，不坐人)
                 if (row === 9 && col === 1) {
                     html += `<td class="volunteer-seat">報到桌<br>(不坐人)</td>`;
                 } else {
@@ -352,7 +362,6 @@
         table.innerHTML = html;
     }
 
-    // 後台名冊解析
     async function processRosterText() {
         const text = document.getElementById("rawRosterInput").value;
         if (!text.trim()) { alert("請先貼入名冊文字內容！"); return; }
@@ -361,10 +370,7 @@
             let classCode = "000000";
             let className = "新研習班期";
             const codeMatch = text.match(/(\d{6})[「"']?([^「」"'\s]+)[開班]?[」"']?/);
-            if (codeMatch) {
-                classCode = codeMatch[1];
-                className = `「${codeMatch[2]}」`;
-            }
+            if (codeMatch) { classCode = codeMatch[1]; className = `「${codeMatch[2]}」`; }
 
             let formattedDate = "";
             const dateMatch = text.match(/受訓日期：(\d+)年(\d+)月(\d+)日/);
@@ -379,8 +385,7 @@
             currentClassID = classCode;
             classHeaderTitle = `${classCode}${className}-${formattedDate}`;
 
-            const cleanText = text.replace(/高雄市政府公務人力發展中心/g, " ")
-                                  .replace(/主任|秘書|組長|副研究員|輔導員|組員|助理員|技士|辦事員|駐衛隊員|技工|駕駛|工友/g, " ");
+            const cleanText = text.replace(/高雄市政府公務人力發展中心/g, " ").replace(/主任|秘書|組長|副研究員|輔導員|組員|助理員|技士|辦事員|駐衛隊員|技工|駕駛|工友/g, " ");
             const tokens = cleanText.split(/[\s\t\n\r ]+/);
             const excludeWords = ["座號", "機關學校", "職稱", "姓名", "受訓日期", "至", "共", "小時", "學員名冊", "班期", "從檢測到防禦的完整漏洞管理流程座位表"];
             const nameSet = new Set();
@@ -388,30 +393,22 @@
 
             tokens.forEach(token => {
                 const clean = token.trim();
-                if (nameRegex.test(clean) && !excludeWords.includes(clean) && !clean.includes("年") && !clean.includes("月") && !clean.includes("日")) {
-                    nameSet.add(clean);
-                }
+                if (nameRegex.test(clean) && !excludeWords.includes(clean) && !clean.includes("年") && !clean.includes("月") && !clean.includes("日")) nameSet.add(clean);
             });
             officialRoster = Array.from(nameSet);
 
-            // 存入 LocalStorage 確保重整不遺失後台資料 (403專屬Key)
             dbTitles[currentClassID] = classHeaderTitle;
             dbRosters[currentClassID] = officialRoster;
             localStorage.setItem("seat_db_titles_403", JSON.stringify(dbTitles));
             localStorage.setItem("seat_db_rosters_403", JSON.stringify(dbRosters));
 
-            // 同步標題至 Firebase
-            if(FIREBASE_URL !== "YOUR_FIREBASE_URL") {
-                await fetch(`${FIREBASE_URL}/classes/${currentClassID}/title.json`, { method: 'PUT', body: JSON.stringify(classHeaderTitle) });
-            }
+            await fetch(`${FIREBASE_URL}/classes/${currentClassID}/title.json`, { method: 'PUT', body: JSON.stringify(classHeaderTitle) });
 
             const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
             alert(`【開班成功】\n403教室班期 ${currentClassID} 已完成建立！`);
             window.location.href = `${baseUrl}?class=${currentClassID}`;
 
-        } catch (err) {
-            alert("解析錯誤，請確認文字內包含完整的名冊結構。");
-        }
+        } catch (err) { alert("解析錯誤，請確認文字內包含完整的名冊結構。"); }
     }
 
     function generateClassQRCode(classId) {
@@ -428,6 +425,7 @@
         });
     }
 
+    // ★ 防竄改機制：判斷此裝置是否有權限修改該座位
     function handleSeatClick(seatCode) {
         if (!currentClassID) {
             alert("目前尚未由後台載入班期。請先由管理員至後台貼入名冊開班！");
@@ -436,15 +434,27 @@
         activeSeatId = seatCode;
         
         const existingName = studentFilledData[seatCode] || "";
+        const myBookedSeat = localStorage.getItem(`mySeat_403_${currentClassID}`); // 取得本裝置綁定的座位
+        
         document.getElementById("targetSeatLabel").innerText = `座位 ${seatCode}`;
         document.getElementById("studentName").value = existingName;
         
         if (existingName) {
-            document.getElementById("btnCancelSeat").style.display = "inline-block";
-            document.getElementById("inputLabelText").innerText = "目前登記學員：";
+            // 位子已被登記
             document.getElementById("studentName").disabled = true; 
             document.getElementById("btnSubmitSeat").style.display = "none"; 
+
+            if (myBookedSeat === seatCode) {
+                // 是本人這台手機登記的：允許取消
+                document.getElementById("btnCancelSeat").style.display = "inline-block";
+                document.getElementById("inputLabelText").innerText = "這是您登記的座位：";
+            } else {
+                // 是別人登記的：隱藏取消按鈕，嚴防竄改
+                document.getElementById("btnCancelSeat").style.display = "none";
+                document.getElementById("inputLabelText").innerText = "此座位已被登記：";
+            }
         } else {
+            // 空位
             document.getElementById("btnCancelSeat").style.display = "none";
             document.getElementById("inputLabelText").innerText = "請填寫您的真實姓名：";
             document.getElementById("studentName").disabled = false;
@@ -456,12 +466,11 @@
     function closeSelectModal() { document.getElementById("seatModal").style.display = "none"; }
 
     async function clearCurrentSeat() {
-        if (confirm(`確定要取消座位 ${activeSeatId} 的登記嗎？`)) {
-            // 先本機更新，確保 UI 瞬間反應
+        if (confirm(`確定要取消您的座位嗎？`)) {
             delete studentFilledData[activeSeatId];
+            localStorage.removeItem(`mySeat_403_${currentClassID}`); // 解除本裝置綁定
             renderSeatsGrid();
             closeSelectModal();
-            // 後端同步
             await updateCloudSeat(activeSeatId, null);
         }
     }
@@ -470,32 +479,33 @@
         const name = document.getElementById("studentName").value.trim();
         if (!name) { alert("請輸入姓名！"); return; }
 
-        // 雲端防搶位檢查
-        if(FIREBASE_URL !== "YOUR_FIREBASE_URL") {
-            try {
-                const res = await fetch(`${FIREBASE_URL}/classes/${currentClassID}/seats.json`);
-                const latestClassData = await res.json() || {};
-
-                if (latestClassData[activeSeatId]) {
-                    alert(`【位置已被搶先登記】\n這個座位剛剛已被「${latestClassData[activeSeatId]}」登記了！請重選空位。`);
-                    studentFilledData = latestClassData;
-                    renderSeatsGrid();
-                    closeSelectModal();
-                    return;
-                }
-
-                if (Object.entries(latestClassData).some(([id, n]) => n === name)) {
-                    alert(`【禁止重複選位】\n「${name}」您目前已登記過其他座位囉！\n每人限選一位。如欲換位，請先取消原先座位。`);
-                    return;
-                }
-            } catch(e) { console.error("防搶檢查異常", e); }
+        // 防重複劃位：檢查本機是否已經有綁定位子
+        const myBookedSeat = localStorage.getItem(`mySeat_403_${currentClassID}`);
+        if (myBookedSeat && myBookedSeat !== activeSeatId) {
+            alert("您已經在這台手機登記過座位囉！每人限選一位。");
+            return;
         }
 
-        // 先本機更新，確保 UI 瞬間反應
+        try {
+            const noCacheUrl = `${FIREBASE_URL}/classes/${currentClassID}/seats.json?t=${new Date().getTime()}`;
+            const res = await fetch(noCacheUrl, { cache: "no-store" });
+            const latestClassData = await res.json() || {};
+
+            if (latestClassData[activeSeatId]) {
+                alert(`【位置已被搶先登記】\n請重選空位。`);
+                studentFilledData = latestClassData;
+                renderSeatsGrid();
+                closeSelectModal();
+                return;
+            }
+        } catch(e) {}
+
+        // 寫入並綁定此裝置
         studentFilledData[activeSeatId] = name;
+        localStorage.setItem(`mySeat_403_${currentClassID}`, activeSeatId); 
+        
         renderSeatsGrid();
         closeSelectModal();
-        // 後端同步
         await updateCloudSeat(activeSeatId, name);
     }
 
@@ -571,12 +581,18 @@
 
     // 啟動程序
     window.onload = async function() {
-        // 1. 強制第一時間畫出網格與標題 (保證畫面不空白)
         renderSeatsGrid();
 
+        // 預先於背景抓取雲端密碼，確保裝置同步 (加入打破快取機制)
+        try {
+            const noCacheUrl = `${FIREBASE_URL}/settings/pwd_403.json?t=${new Date().getTime()}`;
+            const pwdRes = await fetch(noCacheUrl, { cache: "no-store" });
+            const pwdData = await pwdRes.json();
+            if (pwdData) adminPassword = pwdData;
+        } catch(e) {}
+
         if (currentClassID) {
-            // 2. 背景嘗試從 Firebase 抓取最新的標題名稱
-            if(FIREBASE_URL !== "YOUR_FIREBASE_URL" && !dbTitles[currentClassID]) {
+            if(!dbTitles[currentClassID]) {
                 try {
                     const tRes = await fetch(`${FIREBASE_URL}/classes/${currentClassID}/title.json`);
                     const tData = await tRes.json();
@@ -586,7 +602,6 @@
                     }
                 } catch(e){}
             }
-            // 3. 啟動 Firebase 監聽與 QR Code 生成
             startRealtimeSync();
             generateClassQRCode(currentClassID);
         }
