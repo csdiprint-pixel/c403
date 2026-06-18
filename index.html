@@ -165,16 +165,24 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px;">
-                    <button class="btn-admin-act btn-green" style="margin-bottom:0; padding: 10px; font-size:13px;" onclick="adminForceAssignSeat()">寫入該位子</button>
-                    <button class="btn-admin-act btn-red" style="margin-bottom:0; padding: 10px; font-size:13px;" onclick="adminForceClearSeat()">清除該位子</button>
+                    <button type="button" class="btn-admin-act btn-green" style="margin-bottom:0; padding: 10px; font-size:13px;" onclick="adminForceAssignSeat()">寫入該位子</button>
+                    <button type="button" class="btn-admin-act btn-red" style="margin-bottom:0; padding: 10px; font-size:13px;" onclick="adminForceClearSeat()">清除該位子</button>
                 </div>
             </div>
 
             <div class="pwd-section">
                 <h4 style="margin: 0 0 10px 0; color: #7f8c8d;">🔒 雲端安全設定 (跨裝置即時同步)</h4>
-                <div style="display:flex; gap:10px;">
+                
+                <label style="font-size: 13px; font-weight: bold; color:#555;">1. 管理者帳號白名單 (多個請用半形逗號 , 隔開)</label>
+                <div style="display:flex; gap:10px; margin-top:5px; margin-bottom: 15px;">
+                    <input type="text" id="whitelistInput" placeholder="例: admin01, admin02" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                    <button type="button" class="btn-admin-act btn-blue" style="width:auto; margin-bottom:0; padding: 8px 15px; font-size: 13px;" onclick="saveAccountWhitelist()">儲存名單</button>
+                </div>
+
+                <label style="font-size: 13px; font-weight: bold; color:#555;">2. 變更後台共用密碼</label>
+                <div style="display:flex; gap:10px; margin-top:5px;">
                     <input type="password" id="newPasswordInput" placeholder="輸入新密碼" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px;">
-                    <button class="btn-admin-act btn-green" style="width:auto; margin-bottom:0; padding: 8px 15px; font-size: 13px;" onclick="changeAdminPassword()">變更密碼</button>
+                    <button type="button" class="btn-admin-act btn-green" style="width:auto; margin-bottom:0; padding: 8px 15px; font-size: 13px;" onclick="changeAdminPassword()">變更密碼</button>
                 </div>
             </div>
         </div>
@@ -183,9 +191,9 @@
     <div class="modal-overlay" id="loginModal">
         <div class="modal-body">
             <h3 style="margin: 0 0 10px 0; color:#333;">管理者登入</h3>
-            <p style="font-size: 13px; color: #666; margin: 0 0 10px 0;">請輸入信箱與後台密碼：</p>
+            <p style="font-size: 13px; color: #666; margin: 0 0 10px 0;">請輸入管理者帳號與密碼：</p>
             <form onsubmit="event.preventDefault(); submitLogin();">
-                <input type="email" id="adminEmailInput" placeholder="請輸入 Email" style="margin-bottom: 5px;" required>
+                <input type="text" id="adminAccountInput" placeholder="請輸入帳號" style="margin-bottom: 5px;" required>
                 <input type="password" id="adminPasswordInput" placeholder="請輸入密碼 (預設: 403)" required>
                 <div class="modal-btns">
                     <button type="button" class="btn" onclick="closeLoginModal()">取消</button>
@@ -206,9 +214,9 @@
             <p style="font-size: 13px; color: #444; margin: 10px 0 5px 0; font-weight:bold;" id="inputLabelText">請填寫您的真實姓名：</p>
             <input type="text" id="studentName" placeholder="請輸入姓名" autocomplete="off">
             <div class="modal-btns">
-                <button class="btn" onclick="closeSelectModal()">關閉</button>
-                <button class="btn btn-clear" id="btnCancelSeat" onclick="clearCurrentSeat()">取消座位</button>
-                <button class="btn btn-ok" id="btnSubmitSeat" onclick="saveStudentSeat()">確認提交</button>
+                <button type="button" class="btn" onclick="closeSelectModal()">關閉</button>
+                <button type="button" class="btn btn-clear" id="btnCancelSeat" onclick="clearCurrentSeat()">取消座位</button>
+                <button type="button" class="btn btn-ok" id="btnSubmitSeat" onclick="saveStudentSeat()">確認提交</button>
             </div>
         </div>
     </div>
@@ -314,10 +322,10 @@
 
     function openLoginModal() {
         if (currentPage === "student") {
-            document.getElementById("adminEmailInput").value = ""; 
+            document.getElementById("adminAccountInput").value = ""; 
             document.getElementById("adminPasswordInput").value = "";
             document.getElementById("loginModal").style.display = "flex";
-            document.getElementById("adminEmailInput").focus();
+            document.getElementById("adminAccountInput").focus();
         } else {
             document.getElementById("adminPage").classList.remove("active");
             document.getElementById("studentPage").classList.add("active");
@@ -328,11 +336,45 @@
 
     function closeLoginModal() { document.getElementById("loginModal").style.display = "none"; }
 
-    // 登入送出：已移除原本多餘的自訂 alert()
+    // ★ 儲存帳號白名單到 Firebase (accounts_403.json)
+    async function saveAccountWhitelist() {
+        const inputStr = document.getElementById("whitelistInput").value.trim();
+        let accounts = [];
+        if (inputStr) {
+            accounts = inputStr.split(",").map(e => e.trim()).filter(e => e !== "");
+        }
+        try {
+            await fetch(`${FIREBASE_URL}/settings/accounts_403.json`, { method: 'PUT', body: JSON.stringify(accounts) });
+            alert("✅ 管理員白名單更新成功！");
+        } catch(e) {
+            alert("更新失敗，請檢查網路連線。");
+        }
+    }
+
+    // ★ 登入邏輯：比對帳號與密碼
     async function submitLogin() {
+        const accountInput = document.getElementById("adminAccountInput");
         const inputPwd = document.getElementById("adminPasswordInput").value;
         
+        // 原生 form 已經有 required，這裡加上備用檢查
+        if (!accountInput.value.trim()) { alert("請輸入管理者帳號！"); return; }
+        
+        let allowedAccounts = [];
         try {
+            // 抓取雲端帳號白名單
+            const noCacheAccUrl = `${FIREBASE_URL}/settings/accounts_403.json?t=${new Date().getTime()}`;
+            const accRes = await fetch(noCacheAccUrl, { cache: "no-store" });
+            allowedAccounts = await accRes.json() || [];
+            
+            // 名單不為空時，判斷帳號是否在內
+            if (allowedAccounts.length > 0 && !allowedAccounts.includes(accountInput.value.trim())) {
+                alert("⛔ 登入失敗！此帳號不在管理員白名單內。");
+                return;
+            }
+        } catch(e) { console.error("無法核對白名單"); }
+
+        try {
+            // 抓取密碼
             const noCacheUrl = `${FIREBASE_URL}/settings/pwd_403.json?t=${new Date().getTime()}`;
             const pwdRes = await fetch(noCacheUrl, { cache: "no-store" });
             const pwdData = await pwdRes.json();
@@ -345,6 +387,10 @@
             document.getElementById("adminPage").classList.add("active");
             document.getElementById("navToggleBtn").innerText = "返回前台";
             currentPage = "admin";
+            
+            // 成功登入後，將現有白名單顯示於設定框
+            document.getElementById("whitelistInput").value = allowedAccounts.join(", ");
+
             if (currentClassID) generateClassQRCode(currentClassID);
             renderClassHistory(); 
         } else {
