@@ -124,13 +124,19 @@
     <div id="adminPage" class="page">
         <div class="admin-box">
             <h3>⚙️ 403教室 - 系統管理後台</h3>
+
+            <div class="admin-modification-box" style="margin-top: 0; margin-bottom: 15px;">
+                <h4 style="margin: 0 0 10px 0; color: #2c3e50;">📂 歷史班期快速切換</h4>
+                <div id="classHistoryList" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    </div>
+            </div>
             
             <div class="form-group">
                 <label>【步驟一】請複製 Word 名冊內的「所有文字」並貼在下方：</label>
                 <textarea id="rawRosterInput" rows="5" placeholder="請在 Word 檔案中按 Ctrl+A 全選、Ctrl+C 複製，然後直接在此貼上..."></textarea>
             </div>
 
-            <button class="btn-admin-act btn-blue" onclick="processRosterText()">【步驟二】一鍵解析並啟動班期</button>
+            <button class="btn-admin-act btn-blue" onclick="processRosterText()">【步驟二】一鍵解析並啟動新班期</button>
             
             <div id="qrcodeWrapper" class="qrcode-container" style="display: none;">
                 <strong style="color: #2c3e50; margin-bottom: 10px; font-size:14px;">📱 當前班期專屬 QR Code (供學員掃描)</strong>
@@ -177,8 +183,9 @@
     <div class="modal-overlay" id="loginModal">
         <div class="modal-body">
             <h3 style="margin: 0 0 10px 0; color:#333;">管理者登入</h3>
-            <p style="font-size: 13px; color: #666; margin: 0 0 10px 0;">請輸入後台密碼 (預設為 403)：</p>
-            <input type="password" id="adminPasswordInput" placeholder="請輸入密碼">
+            <p style="font-size: 13px; color: #666; margin: 0 0 10px 0;">請輸入信箱與後台密碼：</p>
+            <input type="email" id="adminEmailInput" placeholder="請輸入 Email" style="margin-bottom: 5px;" required>
+            <input type="password" id="adminPasswordInput" placeholder="請輸入密碼 (預設: 403)">
             <div class="modal-btns">
                 <button class="btn" onclick="closeLoginModal()">取消</button>
                 <button class="btn btn-ok" onclick="submitLogin()">登入</button>
@@ -205,14 +212,12 @@
     </div>
 
 <script>
-    // ✅ 已設定 Firebase 網址
     const FIREBASE_URL = "https://seat-302-115552-default-rtdb.firebaseio.com";
 
     let currentPage = "student"; 
     let activeSeatId = "";      
     let isVerifyVisualOn = false; 
 
-    // 密碼初始預設值
     let adminPassword = "403"; 
     let currentClassID = getUrlParam("class") || ""; 
 
@@ -227,7 +232,33 @@
         return new URLSearchParams(window.location.search).get(name);
     }
 
-    // 啟動雲端即時同步
+    function renderClassHistory() {
+        const historyContainer = document.getElementById("classHistoryList");
+        if (!historyContainer) return;
+        historyContainer.innerHTML = "";
+        
+        const classes = Object.keys(dbTitles).filter(c => c !== "");
+        if (classes.length === 0) {
+            historyContainer.innerHTML = "<span style='font-size:13px; color:#999;'>尚無歷史班期紀錄</span>";
+            return;
+        }
+        
+        classes.forEach(cls => {
+            const btn = document.createElement("button");
+            btn.className = (cls === currentClassID) ? "btn-admin-act btn-orange" : "btn-admin-act btn-blue";
+            btn.style.width = "auto";
+            btn.style.padding = "6px 12px";
+            btn.style.margin = "0";
+            btn.style.fontSize = "13px";
+            btn.innerText = "班期 " + cls;
+            btn.onclick = () => { 
+                const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+                window.location.href = `${baseUrl}?class=${cls}`; 
+            };
+            historyContainer.appendChild(btn);
+        });
+    }
+
     function startRealtimeSync() {
         if (!currentClassID) return;
         
@@ -281,9 +312,10 @@
 
     function openLoginModal() {
         if (currentPage === "student") {
+            document.getElementById("adminEmailInput").value = ""; // 清空 Email 欄位
             document.getElementById("adminPasswordInput").value = "";
             document.getElementById("loginModal").style.display = "flex";
-            document.getElementById("adminPasswordInput").focus();
+            document.getElementById("adminEmailInput").focus();
         } else {
             document.getElementById("adminPage").classList.remove("active");
             document.getElementById("studentPage").classList.add("active");
@@ -294,9 +326,19 @@
 
     function closeLoginModal() { document.getElementById("loginModal").style.display = "none"; }
 
-    // ★ 密碼同步：加入 ?t=時間戳記，強制打破瀏覽器快取
     async function submitLogin() {
+        // ★ 修改處：新增 Email 格式原生驗證邏輯
+        const emailInput = document.getElementById("adminEmailInput");
         const inputPwd = document.getElementById("adminPasswordInput").value;
+        
+        if (!emailInput.value) {
+            alert("請輸入管理員 Email！");
+            return;
+        }
+        if (!emailInput.checkValidity()) {
+            alert("Email 格式不正確，請檢查是否包含 '@' 與正確的網域格式。");
+            return;
+        }
         
         try {
             const noCacheUrl = `${FIREBASE_URL}/settings/pwd_403.json?t=${new Date().getTime()}`;
@@ -312,6 +354,7 @@
             document.getElementById("navToggleBtn").innerText = "返回前台";
             currentPage = "admin";
             if (currentClassID) generateClassQRCode(currentClassID);
+            renderClassHistory(); 
         } else {
             alert("密碼錯誤！");
         }
@@ -332,7 +375,6 @@
         }
     }
 
-    // ★ 403 教室專屬網格渲染
     function renderSeatsGrid() {
         document.getElementById("displayClassHeader").innerText = classHeaderTitle;
         const table = document.getElementById("classroomSeats");
@@ -404,6 +446,7 @@
             localStorage.setItem("seat_db_rosters_403", JSON.stringify(dbRosters));
 
             await fetch(`${FIREBASE_URL}/classes/${currentClassID}/title.json`, { method: 'PUT', body: JSON.stringify(classHeaderTitle) });
+            await fetch(`${FIREBASE_URL}/classes/${currentClassID}/roster.json`, { method: 'PUT', body: JSON.stringify(officialRoster) });
 
             const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
             alert(`【開班成功】\n403教室班期 ${currentClassID} 已完成建立！`);
@@ -426,7 +469,6 @@
         });
     }
 
-    // ★ 徹底清除前次班期及劃位資料功能
     async function clearCurrentClassData() {
         if (!currentClassID) {
             alert("目前沒有載入任何班期！");
@@ -434,34 +476,27 @@
         }
 
         const confirmMsg = `⚠️ 警告：確定要徹底清除班期「${currentClassID}」的所有資料嗎？\n這將刪除雲端所有學員的劃位紀錄與本機名冊，且無法復原！`;
-        if (!confirm(confirmMsg)) {
-            return;
-        }
+        if (!confirm(confirmMsg)) { return; }
 
         try {
-            // 1. 清空雲端該班期資料
             await fetch(`${FIREBASE_URL}/classes/${currentClassID}.json`, { method: 'DELETE' });
 
-            // 2. 清除 LocalStorage 內的標題與名冊
             delete dbTitles[currentClassID];
             delete dbRosters[currentClassID];
             localStorage.setItem("seat_db_titles_403", JSON.stringify(dbTitles));
             localStorage.setItem("seat_db_rosters_403", JSON.stringify(dbRosters));
-            localStorage.removeItem(`mySeat_403_${currentClassID}`); // 解除本機綁定
+            localStorage.removeItem(`mySeat_403_${currentClassID}`); 
 
             alert("✅ 班期資料已徹底清除！將自動回到空白首頁。");
 
-            // 3. 重新導向至乾淨首頁
             const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
             window.location.href = baseUrl;
 
         } catch (error) {
             alert("清除失敗，請檢查網路連線！");
-            console.error(error);
         }
     }
 
-    // ★ 防竄改機制
     function handleSeatClick(seatCode) {
         if (!currentClassID) {
             alert("目前尚未由後台載入班期。請先由管理員至後台貼入名冊開班！");
@@ -470,27 +505,23 @@
         activeSeatId = seatCode;
         
         const existingName = studentFilledData[seatCode] || "";
-        const myBookedSeat = localStorage.getItem(`mySeat_403_${currentClassID}`); // 取得本裝置綁定的座位
+        const myBookedSeat = localStorage.getItem(`mySeat_403_${currentClassID}`); 
         
         document.getElementById("targetSeatLabel").innerText = `座位 ${seatCode}`;
         document.getElementById("studentName").value = existingName;
         
         if (existingName) {
-            // 位子已被登記
             document.getElementById("studentName").disabled = true; 
             document.getElementById("btnSubmitSeat").style.display = "none"; 
 
             if (myBookedSeat === seatCode) {
-                // 是本人這台手機登記的：允許取消
                 document.getElementById("btnCancelSeat").style.display = "inline-block";
                 document.getElementById("inputLabelText").innerText = "這是您登記的座位：";
             } else {
-                // 是別人登記的：隱藏取消按鈕，嚴防竄改
                 document.getElementById("btnCancelSeat").style.display = "none";
                 document.getElementById("inputLabelText").innerText = "此座位已被登記：";
             }
         } else {
-            // 空位
             document.getElementById("btnCancelSeat").style.display = "none";
             document.getElementById("inputLabelText").innerText = "請填寫您的真實姓名：";
             document.getElementById("studentName").disabled = false;
@@ -504,7 +535,7 @@
     async function clearCurrentSeat() {
         if (confirm(`確定要取消您的座位嗎？`)) {
             delete studentFilledData[activeSeatId];
-            localStorage.removeItem(`mySeat_403_${currentClassID}`); // 解除本裝置綁定
+            localStorage.removeItem(`mySeat_403_${currentClassID}`); 
             renderSeatsGrid();
             closeSelectModal();
             await updateCloudSeat(activeSeatId, null);
@@ -515,7 +546,6 @@
         const name = document.getElementById("studentName").value.trim();
         if (!name) { alert("請輸入姓名！"); return; }
 
-        // 防重複劃位：檢查本機是否已經有綁定位子
         const myBookedSeat = localStorage.getItem(`mySeat_403_${currentClassID}`);
         if (myBookedSeat && myBookedSeat !== activeSeatId) {
             alert("您已經在這台手機登記過座位囉！每人限選一位。");
@@ -536,7 +566,6 @@
             }
         } catch(e) {}
 
-        // 寫入並綁定此裝置
         studentFilledData[activeSeatId] = name;
         localStorage.setItem(`mySeat_403_${currentClassID}`, activeSeatId); 
         
@@ -617,9 +646,6 @@
 
     // 啟動程序
     window.onload = async function() {
-        renderSeatsGrid();
-
-        // 預先於背景抓取雲端密碼，確保裝置同步 (加入打破快取機制)
         try {
             const noCacheUrl = `${FIREBASE_URL}/settings/pwd_403.json?t=${new Date().getTime()}`;
             const pwdRes = await fetch(noCacheUrl, { cache: "no-store" });
@@ -628,18 +654,29 @@
         } catch(e) {}
 
         if (currentClassID) {
-            if(!dbTitles[currentClassID]) {
-                try {
-                    const tRes = await fetch(`${FIREBASE_URL}/classes/${currentClassID}/title.json`);
-                    const tData = await tRes.json();
-                    if(tData) {
-                        classHeaderTitle = tData;
-                        renderSeatsGrid();
-                    }
-                } catch(e){}
-            }
+            try {
+                const tRes = await fetch(`${FIREBASE_URL}/classes/${currentClassID}/title.json?t=${new Date().getTime()}`, { cache: "no-store" });
+                const tData = await tRes.json();
+                if(tData) {
+                    classHeaderTitle = tData;
+                    dbTitles[currentClassID] = classHeaderTitle;
+                }
+            } catch(e){}
+
+            try {
+                const rRes = await fetch(`${FIREBASE_URL}/classes/${currentClassID}/roster.json?t=${new Date().getTime()}`, { cache: "no-store" });
+                const rData = await rRes.json();
+                if(rData) {
+                    officialRoster = rData;
+                    dbRosters[currentClassID] = officialRoster;
+                }
+            } catch(e){}
+
+            renderSeatsGrid();
             startRealtimeSync();
             generateClassQRCode(currentClassID);
+        } else {
+            renderSeatsGrid();
         }
     };
 </script>
