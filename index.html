@@ -184,12 +184,14 @@
         <div class="modal-body">
             <h3 style="margin: 0 0 10px 0; color:#333;">管理者登入</h3>
             <p style="font-size: 13px; color: #666; margin: 0 0 10px 0;">請輸入信箱與後台密碼：</p>
-            <input type="email" id="adminEmailInput" placeholder="請輸入 Email" style="margin-bottom: 5px;" required>
-            <input type="password" id="adminPasswordInput" placeholder="請輸入密碼 (預設: 403)">
-            <div class="modal-btns">
-                <button class="btn" onclick="closeLoginModal()">取消</button>
-                <button class="btn btn-ok" onclick="submitLogin()">登入</button>
-            </div>
+            <form onsubmit="event.preventDefault(); submitLogin();">
+                <input type="email" id="adminEmailInput" placeholder="請輸入 Email" style="margin-bottom: 5px;" required>
+                <input type="password" id="adminPasswordInput" placeholder="請輸入密碼 (預設: 403)" required>
+                <div class="modal-btns">
+                    <button type="button" class="btn" onclick="closeLoginModal()">取消</button>
+                    <button type="submit" class="btn btn-ok">登入</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -312,7 +314,7 @@
 
     function openLoginModal() {
         if (currentPage === "student") {
-            document.getElementById("adminEmailInput").value = ""; // 清空 Email 欄位
+            document.getElementById("adminEmailInput").value = ""; 
             document.getElementById("adminPasswordInput").value = "";
             document.getElementById("loginModal").style.display = "flex";
             document.getElementById("adminEmailInput").focus();
@@ -326,19 +328,9 @@
 
     function closeLoginModal() { document.getElementById("loginModal").style.display = "none"; }
 
+    // 登入送出：已移除原本多餘的自訂 alert()
     async function submitLogin() {
-        // ★ 修改處：新增 Email 格式原生驗證邏輯
-        const emailInput = document.getElementById("adminEmailInput");
         const inputPwd = document.getElementById("adminPasswordInput").value;
-        
-        if (!emailInput.value) {
-            alert("請輸入管理員 Email！");
-            return;
-        }
-        if (!emailInput.checkValidity()) {
-            alert("Email 格式不正確，請檢查是否包含 '@' 與正確的網域格式。");
-            return;
-        }
         
         try {
             const noCacheUrl = `${FIREBASE_URL}/settings/pwd_403.json?t=${new Date().getTime()}`;
