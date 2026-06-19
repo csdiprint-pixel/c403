@@ -3,15 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <!-- Security Headers -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self' https://*.firebasedatabase.app; frame-ancestors 'none';">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="X-Frame-Options" content="DENY">
-    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
     <title>403教室線上即時選位與核實系統</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha512-2Z+JrQEHRZvql2xg+CvpFLk0HJ4V9+ZnaYWQpsoCdkAcP0mchvX/xl/c98pJt+gDaJ+z8I+Y3W8V6141We6S6A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root {
             --border-color: #707070;
@@ -46,10 +39,10 @@
         .classroom-grid { display: flex; justify-content: center; align-items: stretch; overflow-x: auto; padding-bottom: 15px; margin-top: 10px; }
 
         /* 403 教室專屬配置：左側門位 */
-        .door-notice-left { width: 45px; font-size: 13px; font-weight: bold; color: #ff0000; display: flex; flex-direction: column; text-align: center; justify-content: space-between; padding-top: 30px; }
+        .door-notice-left { width: 45px; font-size: 13px; font-weight: bold; color: #ff0000; display: flex; flex-direction: column; text-align: center; justify-content: space-between; padding-top: 5px; padding-bottom: 5px; margin-right: 5px; } 
 
         .seat-table { border-collapse: separate; border-spacing: 5px; min-width: 300px; }
-        .seat-table td { border: 1px solid var(--border-color); text-align: center; vertical-align: middle; width: 75px; height: 50px; font-size: 13px; font-weight: bold; background-color: #fff; cursor: pointer; user-select: none; }
+        .seat-table td { border: 1px solid var(--border-color); text-align: center; vertical-align: middle; width: 75px; height: 50px; font-size: 13px; font-weight: bold; background-color: #fff; cursor: pointer; border-radius: 4px; }
         .seat-table td.booked { background-color: var(--booked-bg); color: var(--booked-text); border-color: #8aa4b7; }
         
         .seat-table td.my-seat { 
@@ -76,7 +69,7 @@
         .btn-ok { background: #d4edda; color: #155724; border-color: #c3e6cb; font-weight: bold; }
         .btn-clear { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
 
-        .modal-notice-box { background: #fff9f9; border: 1px solid #ffcccc; border-radius: 4px; padding: 10px; margin: 10px 0; text-align: left; font-size: 12px; color: #cc0000; line-height: 1.5; }
+        .modal-notice-box { background: #fff9f9; border: 1px solid #ffcccc; border-radius: 4px; padding: 10px; margin: 10px 0; text-align: left; font-size: 12px; color: #cc0000; line-height: 1.5; font-weight: bold; }
 
         /* 後台樣式 */
         .admin-box { background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto; }
@@ -85,9 +78,7 @@
         .form-group label { display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #333; }
         .form-group textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; resize: vertical; }
         
-        .btn-admin-act { width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; color: white; margin-bottom: 10px; transition: opacity 0.3s; }
-        .btn-admin-act:hover { opacity: 0.9; }
-        .btn-admin-act:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-admin-act { width: 100%; padding: 12px; font-size: 14px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; color: white; margin-bottom: 10px; }
         .btn-blue { background-color: #2980b9; }
         .btn-orange { background-color: #e67e22; }
         .btn-gray { background-color: #7f8c8d; }
@@ -103,10 +94,6 @@
         .admin-modification-box { background: #f4f6f7; border: 1px solid #d5dbdb; padding: 15px; border-radius: 5px; margin-top: 20px; }
         .pwd-section { margin-top: 25px; padding-top: 15px; border-top: 1px dashed #ccc; }
 
-        .security-notice { background: #fffbcc; border: 2px solid #ffc107; border-radius: 6px; padding: 12px; margin-bottom: 15px; color: #856404; font-size: 13px; }
-
-        .login-attempts-warning { background: #f8d7da; border: 2px solid #f5c6cb; border-radius: 6px; padding: 10px; color: #721c24; margin-bottom: 15px; display: none; font-size: 13px; }
-
         @media print {
             body { background-color: #fff; padding: 0; margin: 0; }
             .nav-bar, #adminPage, .scroll-hint, .modal-overlay { display: none !important; }
@@ -119,7 +106,7 @@
 <body>
 
     <div class="nav-bar">
-        <span>選位系統 (403教室)</span>
+        <span>公務人力發展中心選位系統 (403教室)</span>
         <button class="nav-btn" id="navToggleBtn" onclick="openLoginModal()">管理後台</button>
     </div>
 
@@ -149,14 +136,6 @@
     <div id="adminPage" class="page">
         <div class="admin-box">
             <h3>⚙️ 403教室 - 系統管理後台</h3>
-            
-            <div class="security-notice">
-                🔒 <strong>安全提示：</strong> 此後台使用安全驗證機制。所有操作將被記錄。請勿在公開場所洩露登入憑證。
-            </div>
-
-            <div class="login-attempts-warning" id="loginWarning">
-                ⚠️ 登入嘗試次數過多，請稍後再試 (限制: 5次/15分鐘)
-            </div>
             
             <button class="btn-admin-act btn-gray" onclick="logoutAdmin()" style="margin-bottom: 15px;">🚪 安全登出</button>
 
@@ -214,9 +193,9 @@
                     <button type="button" class="btn-admin-act btn-blue" style="width:auto; margin-bottom:0; padding: 8px 15px; font-size: 13px;" onclick="saveAccountWhitelist()">儲存名單</button>
                 </div>
 
-                <label style="font-size: 13px; font-weight: bold; color:#555;">2. 變更後台共用密碼 (必須8字元以上，包含大小寫字母、數字)</label>
+                <label style="font-size: 13px; font-weight: bold; color:#555;">2. 變更後台共用密碼</label>
                 <div style="display:flex; gap:10px; margin-top:5px;">
-                    <input type="password" id="newPasswordInput" placeholder="輸入新密碼 (強度要求: 8+ 字元含大小寫數字)" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px;">
+                    <input type="password" id="newPasswordInput" placeholder="輸入新密碼" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:4px;">
                     <button type="button" class="btn-admin-act btn-green" style="width:auto; margin-bottom:0; padding: 8px 15px; font-size: 13px;" onclick="changeAdminPassword()">變更密碼</button>
                 </div>
             </div>
@@ -228,8 +207,8 @@
             <h3 style="margin: 0 0 10px 0; color:#333;">管理者登入</h3>
             <p style="font-size: 13px; color: #666; margin: 0 0 10px 0;">請輸入管理者帳號與密碼：</p>
             <form onsubmit="event.preventDefault(); submitLogin();">
-                <input type="text" id="adminAccountInput" placeholder="請輸入帳號" style="margin-bottom: 5px;" required autocomplete="username">
-                <input type="password" id="adminPasswordInput" placeholder="請輸入密碼" required autocomplete="current-password">
+                <input type="text" id="adminAccountInput" placeholder="請輸入帳號" style="margin-bottom: 5px;" required>
+                <input type="password" id="adminPasswordInput" placeholder="請輸入密碼 (預設: 403)" required>
                 <div class="modal-btns">
                     <button type="button" class="btn" onclick="closeLoginModal()">取消</button>
                     <button type="submit" class="btn btn-ok">登入</button>
@@ -257,78 +236,22 @@
     </div>
 
 <script>
-    'use strict';
-
-    // ★★★ 安全工具函數 ★★★
-    
-    /**
-     * HTML 轉義 - 防止 XSS 攻擊
-     */
+    // ★ 毒素過濾器已移至正確位置
     function escapeHTML(str) {
-        if (!str || typeof str !== 'string') return "";
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
-    /**
-     * 驗證密碼強度
-     */
-    function validatePasswordStrength(pwd) {
-        if (!pwd || pwd.length < 8) return false;
-        const hasUpper = /[A-Z]/.test(pwd);
-        const hasLower = /[a-z]/.test(pwd);
-        const hasNumber = /\d/.test(pwd);
-        return hasUpper && hasLower && hasNumber;
-    }
-
-    /**
-     * 生成 CSRF Token
-     */
-    function generateCSRFToken() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
+        if (!str) return "";
+        return str.replace(/[&<>'"]/g, function(tag) {
+            const charsToReplace = { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' };
+            return charsToReplace[tag] || tag;
         });
     }
 
-    /**
-     * 登入嘗試速率限制
-     */
-    class LoginRateLimiter {
-        constructor(maxAttempts = 5, timeWindow = 15 * 60 * 1000) {
-            this.maxAttempts = maxAttempts;
-            this.timeWindow = timeWindow;
-            this.attempts = [];
-        }
-
-        isLimited() {
-            const now = Date.now();
-            this.attempts = this.attempts.filter(t => now - t < this.timeWindow);
-            return this.attempts.length >= this.maxAttempts;
-        }
-
-        recordAttempt() {
-            this.attempts.push(Date.now());
-        }
-
-        getResetTime() {
-            if (this.attempts.length === 0) return 0;
-            return Math.ceil((this.attempts[0] + this.timeWindow - Date.now()) / 1000);
-        }
-    }
-
-    const loginLimiter = new LoginRateLimiter();
-
-    // ★★★ 應用程式變數 ★★★
-    
     const FIREBASE_URL = "https://csdi-seating-system-default-rtdb.asia-southeast1.firebasedatabase.app";
-    
+
     let currentPage = "student"; 
     let activeSeatId = "";      
     let isVerifyVisualOn = false; 
-    let csrfToken = generateCSRFToken();
 
+    let adminPassword = "403"; 
     let currentClassID = getUrlParam("class") || ""; 
 
     let dbTitles = JSON.parse(localStorage.getItem("seat_db_titles_403")) || {};
@@ -338,38 +261,22 @@
     let officialRoster = dbRosters[currentClassID] || [];
     let studentFilledData = {}; 
 
-    /**
-     * 姓名遮罩
-     */
     function maskName(name) {
-        if (!name || typeof name !== 'string') return "";
+        if (!name) return "";
         if (name.length === 2) return name[0] + "Ｏ";
         if (name.length >= 3) return name[0] + "Ｏ" + name.substring(2);
         return name;
     }
 
-    /**
-     * 獲取 URL 參數（安全版本）
-     */
     function getUrlParam(name) {
-        const params = new URLSearchParams(window.location.search);
-        const value = params.get(name);
-        return value ? escapeHTML(value) : "";
+        return new URLSearchParams(window.location.search).get(name);
     }
 
-    /**
-     * 管理員登出
-     */
     function logoutAdmin() {
         sessionStorage.removeItem("isAdminAuthed_403");
-        sessionStorage.removeItem("adminAuthToken_403");
-        csrfToken = generateCSRFToken();
         location.reload();
     }
 
-    /**
-     * 渲染班期歷史
-     */
     function renderClassHistory() {
         const historyContainer = document.getElementById("classHistoryList");
         if (!historyContainer) return;
@@ -388,119 +295,78 @@
             btn.style.padding = "6px 12px";
             btn.style.margin = "0";
             btn.style.fontSize = "13px";
-            btn.innerText = "班期 " + escapeHTML(cls);
+            btn.innerText = "班期 " + cls;
             btn.onclick = () => { 
                 const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
-                window.location.href = `${baseUrl}?class=${encodeURIComponent(cls)}`; 
+                window.location.href = `${baseUrl}?class=${cls}`; 
             };
             historyContainer.appendChild(btn);
         });
     }
 
-    /**
-     * 啟動實時同步
-     */
+    // ★ 已將路徑獨立改為 room403
     function startRealtimeSync() {
         if (!currentClassID) return;
         
-        const syncUrl = `${FIREBASE_URL}/room403/${encodeURIComponent(currentClassID)}/seats.json`;
-        try {
-            const eventSource = new EventSource(syncUrl);
+        const syncUrl = `${FIREBASE_URL}/room403/${currentClassID}/seats.json`;
+        const eventSource = new EventSource(syncUrl);
 
-            eventSource.onmessage = function(event) {
-                try {
-                    const data = JSON.parse(event.data);
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data && data.path === "/") {
+                if (data.data === null) {
+                    alert("⚠️ 此班期已被管理員強制關閉並清除資料！自動返回首頁。");
+                    delete dbTitles[currentClassID];
+                    delete dbRosters[currentClassID];
+                    localStorage.setItem("seat_db_titles_403", JSON.stringify(dbTitles));
+                    localStorage.setItem("seat_db_rosters_403", JSON.stringify(dbRosters));
+                    localStorage.removeItem(`mySeat_403_${currentClassID}`);
                     
-                    if (data && data.path === "/") {
-                        if (data.data === null) {
-                            alert("⚠️ 此班期已被管理員強制關閉並清除資料！自動返回首頁。");
-                            delete dbTitles[currentClassID];
-                            delete dbRosters[currentClassID];
-                            localStorage.setItem("seat_db_titles_403", JSON.stringify(dbTitles));
-                            localStorage.setItem("seat_db_rosters_403", JSON.stringify(dbRosters));
-                            localStorage.removeItem(`mySeat_403_${currentClassID}`);
-                            window.location.replace(window.location.pathname);
-                            return;
-                        }
-                        studentFilledData = data.data || {};
-                    } else if (data && data.path) {
-                        const cleanKey = data.path.replace("/", "");
-                        if (cleanKey) {
-                            if (data.data === null) delete studentFilledData[cleanKey];
-                            else studentFilledData[cleanKey] = data.data;
-                        }
-                    } else if (event.data && !data.path) {
-                        studentFilledData = data || {};
-                    }
-                    renderSeatsGrid();
-                } catch(e) {
-                    console.error('同步數據解析錯誤:', e);
+                    window.location.replace(window.location.pathname);
+                    return;
                 }
-            };
-
-            eventSource.onerror = function(e) {
-                console.error('同步連接錯誤:', e);
-                eventSource.close();
-            };
-
-            fetchSeatsDataLegacy();
-        } catch(e) {
-            console.error('啟動同步失敗:', e);
-        }
+                studentFilledData = data.data || {};
+            } else if (data && data.path) {
+                const cleanKey = data.path.replace("/", "");
+                if (cleanKey) {
+                    if (data.data === null) delete studentFilledData[cleanKey];
+                    else studentFilledData[cleanKey] = data.data;
+                }
+            } else if (event.data && !data.path) {
+                studentFilledData = data || {};
+            }
+            renderSeatsGrid();
+        };
+        fetchSeatsDataLegacy();
     }
 
-    /**
-     * 獲取座位數據（備用）
-     */
     async function fetchSeatsDataLegacy() {
         if (!currentClassID) return;
         try {
-            const res = await fetch(`${FIREBASE_URL}/room403/${encodeURIComponent(currentClassID)}/seats.json?t=${new Date().getTime()}`, {
-                cache: "no-store",
-                credentials: "omit"
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const res = await fetch(`${FIREBASE_URL}/room403/${currentClassID}/seats.json`);
             const data = await res.json();
             studentFilledData = data || {};
             renderSeatsGrid();
-        } catch(e) {
-            console.error('讀取座位數據失敗:', e);
-        }
+        } catch(e) {}
     }
 
-    /**
-     * 更新雲端座位信息
-     */
     async function updateCloudSeat(seatId, name) {
         if (!currentClassID) return true;
         try {
-            let url = `${FIREBASE_URL}/room403/${encodeURIComponent(currentClassID)}/seats/${encodeURIComponent(seatId)}.json`;
-            const options = {
-                cache: "no-store",
-                credentials: "omit"
-            };
-
+            let url = `${FIREBASE_URL}/room403/${currentClassID}/seats/${seatId}.json`;
             if (name === null) {
-                await fetch(url, { method: 'DELETE', ...options });
+                await fetch(url, { method: 'DELETE' });
             } else {
-                await fetch(url, { 
-                    method: 'PUT', 
-                    body: JSON.stringify(name),
-                    headers: { 'Content-Type': 'application/json' },
-                    ...options 
-                });
+                await fetch(url, { method: 'PUT', body: JSON.stringify(name) });
             }
             return true;
         } catch (e) {
-            console.error('更新座位失敗:', e);
             alert("網路連線不穩定，請重新提交。");
             return false;
         }
     }
 
-    /**
-     * 打開登入彈窗
-     */
     function openLoginModal() {
         if (currentPage === "student") {
             if (sessionStorage.getItem("isAdminAuthed_403") === "true") {
@@ -511,10 +377,6 @@
                 renderClassHistory();
                 renderSeatsGrid(); 
             } else {
-                if (loginLimiter.isLimited()) {
-                    showLoginWarning();
-                    return;
-                }
                 document.getElementById("adminAccountInput").value = ""; 
                 document.getElementById("adminPasswordInput").value = "";
                 document.getElementById("loginModal").style.display = "flex";
@@ -529,29 +391,8 @@
         }
     }
 
-    /**
-     * 關閉登入彈窗
-     */
-    function closeLoginModal() { 
-        document.getElementById("loginModal").style.display = "none"; 
-    }
+    function closeLoginModal() { document.getElementById("loginModal").style.display = "none"; }
 
-    /**
-     * 顯示登入限制警告
-     */
-    function showLoginWarning() {
-        const warning = document.getElementById("loginWarning");
-        const resetTime = loginLimiter.getResetTime();
-        warning.innerHTML = `⚠️ 登入嘗試次數過多，請 ${resetTime} 秒後再試 (限制: 5次/15分鐘)`;
-        warning.style.display = "block";
-        setTimeout(() => {
-            warning.style.display = "none";
-        }, resetTime * 1000);
-    }
-
-    /**
-     * 儲存帳號白名單
-     */
     async function saveAccountWhitelist() {
         const inputStr = document.getElementById("whitelistInput").value.trim();
         let accounts = [];
@@ -559,135 +400,74 @@
             accounts = inputStr.split(",").map(e => e.trim()).filter(e => e !== "");
         }
         try {
-            await fetch(`${FIREBASE_URL}/settings/accounts_403.json`, { 
-                method: 'PUT', 
-                body: JSON.stringify(accounts),
-                headers: { 'Content-Type': 'application/json' },
-                credentials: "omit"
-            });
+            await fetch(`${FIREBASE_URL}/settings/accounts_403.json`, { method: 'PUT', body: JSON.stringify(accounts) });
             alert("✅ 管理員白名單更新成功！");
         } catch(e) {
-            console.error('白名單更新失敗:', e);
             alert("更新失敗，請檢查網路連線。");
         }
     }
 
-    /**
-     * 提交登入
-     */
     async function submitLogin() {
-        if (loginLimiter.isLimited()) {
-            showLoginWarning();
-            return;
-        }
-
         const accountInput = document.getElementById("adminAccountInput");
         const inputPwd = document.getElementById("adminPasswordInput").value;
         
-        if (!accountInput.value.trim()) { 
-            alert("請輸入管理者帳號！"); 
-            return; 
-        }
-
-        if (!inputPwd) {
-            alert("請輸入密碼！"); 
-            return;
-        }
+        if (!accountInput.value.trim()) { alert("請輸入管理者帳號！"); return; }
         
-        loginLimiter.recordAttempt();
-
         let allowedAccounts = [];
-        let serverPassword = null;
-
         try {
             const noCacheAccUrl = `${FIREBASE_URL}/settings/accounts_403.json?t=${new Date().getTime()}`;
-            const accRes = await fetch(noCacheAccUrl, { 
-                cache: "no-store",
-                credentials: "omit"
-            });
-            if (accRes.ok) {
-                allowedAccounts = await accRes.json() || [];
-            }
+            const accRes = await fetch(noCacheAccUrl, { cache: "no-store" });
+            allowedAccounts = await accRes.json() || [];
             
             if (allowedAccounts.length > 0 && !allowedAccounts.includes(accountInput.value.trim())) {
                 alert("⛔ 登入失敗！此帳號不在管理員白名單內。");
                 return;
             }
-        } catch(e) { 
-            console.error("無法核對白名單:", e); 
-        }
+        } catch(e) { console.error("無法核對白名單"); }
 
         try {
             const noCacheUrl = `${FIREBASE_URL}/settings/pwd_403.json?t=${new Date().getTime()}`;
-            const pwdRes = await fetch(noCacheUrl, { 
-                cache: "no-store",
-                credentials: "omit"
-            });
-            if (pwdRes.ok) {
-                const pwdData = await pwdRes.json();
-                if (pwdData) serverPassword = pwdData;
-            }
-        } catch(e) { 
-            console.error("無法連線至雲端核對密碼:", e); 
-        }
+            const pwdRes = await fetch(noCacheUrl, { cache: "no-store" });
+            const pwdData = await pwdRes.json();
+            if (pwdData) adminPassword = pwdData;
+        } catch(e) { console.error("無法連線至雲端核對密碼"); }
 
-        if (serverPassword && inputPwd !== serverPassword) {
+        if (inputPwd === adminPassword) {
+            sessionStorage.setItem("isAdminAuthed_403", "true");
+            
+            closeLoginModal();
+            document.getElementById("studentPage").classList.remove("active");
+            document.getElementById("adminPage").classList.add("active");
+            document.getElementById("navToggleBtn").innerText = "返回前台";
+            currentPage = "admin";
+            
+            document.getElementById("whitelistInput").value = allowedAccounts.join(", ");
+
+            if (currentClassID) generateClassQRCode(currentClassID);
+            renderClassHistory(); 
+            renderSeatsGrid(); 
+        } else {
             alert("密碼錯誤！");
-            return;
         }
-
-        sessionStorage.setItem("isAdminAuthed_403", "true");
-        
-        closeLoginModal();
-        document.getElementById("studentPage").classList.remove("active");
-        document.getElementById("adminPage").classList.add("active");
-        document.getElementById("navToggleBtn").innerText = "返回前台";
-        currentPage = "admin";
-        
-        document.getElementById("whitelistInput").value = allowedAccounts.join(", ");
-
-        if (currentClassID) generateClassQRCode(currentClassID);
-        renderClassHistory(); 
-        renderSeatsGrid(); 
     }
 
-    /**
-     * 變更管理員密碼
-     */
     async function changeAdminPassword() {
         const newPwd = document.getElementById("newPasswordInput").value.trim();
-        if (!newPwd) { 
-            alert("密碼不可為空！"); 
-            return; 
-        }
-
-        if (!validatePasswordStrength(newPwd)) {
-            alert("密碼強度不足！\n要求: 至少8個字符，包含大寫字母、小寫字母、數字\n例如: Admin123"); 
-            return;
-        }
-
-        if (confirm(`確定要將密碼修改為「${escapeHTML(newPwd)}」嗎？`)) {
+        if (!newPwd) { alert("密碼不可為空！"); return; }
+        if (confirm(`確定要將密碼修改為「${newPwd}」嗎？`)) {
+            adminPassword = newPwd;
             try {
-                await fetch(`${FIREBASE_URL}/settings/pwd_403.json`, { 
-                    method: 'PUT', 
-                    body: JSON.stringify(newPwd),
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: "omit"
-                });
+                await fetch(`${FIREBASE_URL}/settings/pwd_403.json`, { method: 'PUT', body: JSON.stringify(newPwd) });
                 document.getElementById("newPasswordInput").value = "";
                 alert("密碼修改成功！所有裝置已即時同步生效。");
             } catch(e) {
-                console.error('密碼修改失敗:', e);
                 alert("密碼同步失敗，請檢查網路連線。");
             }
         }
     }
 
-    /**
-     * 渲染座位網格
-     */
     function renderSeatsGrid() {
-        document.getElementById("displayClassHeader").innerText = escapeHTML(classHeaderTitle);
+        document.getElementById("displayClassHeader").innerText = classHeaderTitle;
         const table = document.getElementById("classroomSeats");
         let html = "";
 
@@ -716,9 +496,9 @@
                             displayName = maskName(name);
                         }
 
-                        html += `<td onclick="handleSeatClick('${escapeHTML(seatCode)}')">${escapeHTML(seatCode)}<br>${escapeHTML(displayName)}</td>`;
+                        html += `<td class="${tdClass}" onclick="handleSeatClick('${seatCode}')">${seatCode}<br>${displayName}</td>`;
                     } else {
-                        html += `<td onclick="handleSeatClick('${escapeHTML(seatCode)}')">${escapeHTML(seatCode)}</td>`;
+                        html += `<td onclick="handleSeatClick('${seatCode}')">${seatCode}</td>`;
                     }
                 }
             }
@@ -727,24 +507,15 @@
         table.innerHTML = html;
     }
 
-    /**
-     * 處理名冊文字
-     */
     async function processRosterText() {
         const text = document.getElementById("rawRosterInput").value;
-        if (!text.trim()) { 
-            alert("請先貼入名冊文字內容！"); 
-            return; 
-        }
+        if (!text.trim()) { alert("請先貼入名冊文字內容！"); return; }
 
         try {
             let classCode = "000000";
             let className = "新研習班期";
             const codeMatch = text.match(/(\d{6})[「"']?([^「」"'\s]+)[開班]?[」"']?/);
-            if (codeMatch) { 
-                classCode = codeMatch[1]; 
-                className = `「${escapeHTML(codeMatch[2])}」`; 
-            }
+            if (codeMatch) { classCode = codeMatch[1]; className = `「${codeMatch[2]}」`; }
 
             let formattedDate = "";
             const dateMatch = text.match(/受訓日期：(\d+)年(\d+)月(\d+)日/);
@@ -759,17 +530,15 @@
             currentClassID = classCode;
             classHeaderTitle = `${classCode}${className}-${formattedDate}`;
 
-            const cleanText = text.replace(/高雄市政府公務人力發展中心/g, " ");
+            const cleanText = text.replace(/高雄市政府公務人力發展中心/g, " ").replace(/主任|秘書|組長|副研究員|輔導員|組員|助理員|技士|辦事員|駐衛隊員|技工|駕駛|工友/g, " ");
             const tokens = cleanText.split(/[\s\t\n\r ]+/);
-            const excludeWords = ["座號", "機關學校", "職稱", "姓名", "受訓日期", "至", "共", "小時", "學員名冊", "班期"];
+            const excludeWords = ["座號", "機關學校", "職稱", "姓名", "受訓日期", "至", "共", "小時", "學員名冊", "班期", "從檢測到防禦的完整漏洞管理流程座位表"];
             const nameSet = new Set();
             const nameRegex = /^[\u4e00-\u9fa5]{2,4}$/;
 
             tokens.forEach(token => {
                 const clean = token.trim();
-                if (nameRegex.test(clean) && !excludeWords.includes(clean) && !clean.includes("年") && !clean.includes("月") && !clean.includes("日")) {
-                    nameSet.add(clean);
-                }
+                if (nameRegex.test(clean) && !excludeWords.includes(clean) && !clean.includes("年") && !clean.includes("月") && !clean.includes("日")) nameSet.add(clean);
             });
             officialRoster = Array.from(nameSet);
 
@@ -778,68 +547,41 @@
             localStorage.setItem("seat_db_titles_403", JSON.stringify(dbTitles));
             localStorage.setItem("seat_db_rosters_403", JSON.stringify(dbRosters));
 
-            await fetch(`${FIREBASE_URL}/room403/${encodeURIComponent(currentClassID)}/title.json`, { 
-                method: 'PUT', 
-                body: JSON.stringify(classHeaderTitle),
-                headers: { 'Content-Type': 'application/json' },
-                credentials: "omit"
-            });
-            await fetch(`${FIREBASE_URL}/room403/${encodeURIComponent(currentClassID)}/roster.json`, { 
-                method: 'PUT', 
-                body: JSON.stringify(officialRoster),
-                headers: { 'Content-Type': 'application/json' },
-                credentials: "omit"
-            });
+            await fetch(`${FIREBASE_URL}/room403/${currentClassID}/title.json`, { method: 'PUT', body: JSON.stringify(classHeaderTitle) });
+            await fetch(`${FIREBASE_URL}/room403/${currentClassID}/roster.json`, { method: 'PUT', body: JSON.stringify(officialRoster) });
 
             const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
             alert(`【開班成功】\n403教室班期 ${currentClassID} 已完成建立！`);
-            window.location.replace(`${baseUrl}?class=${encodeURIComponent(currentClassID)}`);
+            window.location.href = `${baseUrl}?class=${currentClassID}`;
 
-        } catch (err) { 
-            console.error('解析錯誤:', err);
-            alert("解析錯誤，請確認文字內包含完整的名冊結構。"); 
-        }
+        } catch (err) { alert("解析錯誤，請確認文字內包含完整的名冊結構。"); }
     }
 
-    /**
-     * 生成 QR Code
-     */
     function generateClassQRCode(classId) {
         if(!classId) return;
         const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
-        const targetClassUrl = `${baseUrl}?class=${encodeURIComponent(classId)}`;
+        const targetClassUrl = `${baseUrl}?class=${classId}`;
 
         document.getElementById("qrcodeWrapper").style.display = "flex";
-        document.getElementById("qrcodeUrl").innerText = escapeHTML(targetClassUrl);
+        document.getElementById("qrcodeUrl").innerText = targetClassUrl;
         document.getElementById("qrcode").innerHTML = "";
 
         new QRCode(document.getElementById("qrcode"), {
-            text: targetClassUrl, 
-            width: 160, 
-            height: 160, 
-            colorDark : "#2c3e50", 
-            colorLight : "#ffffff", 
-            correctLevel : QRCode.CorrectLevel.M
+            text: targetClassUrl, width: 160, height: 160, colorDark : "#2c3e50", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.M
         });
     }
 
-    /**
-     * 清除當前班期數據
-     */
     async function clearCurrentClassData() {
         if (!currentClassID) {
             alert("目前沒有載入任何班期！");
             return;
         }
 
-        const confirmMsg = `⚠️ 警告：確定要徹底清除班期「${escapeHTML(currentClassID)}」的所有資料嗎？\n這將刪除雲端所有學員的劃位紀錄與本機名冊，且無法復原！`;
+        const confirmMsg = `⚠️ 警告：確定要徹底清除班期「${currentClassID}」的所有資料嗎？\n這將刪除雲端所有學員的劃位紀錄與本機名冊，且無法復原！`;
         if (!confirm(confirmMsg)) { return; }
 
         try {
-            await fetch(`${FIREBASE_URL}/room403/${encodeURIComponent(currentClassID)}.json`, { 
-                method: 'DELETE',
-                credentials: "omit"
-            });
+            await fetch(`${FIREBASE_URL}/room403/${currentClassID}.json`, { method: 'DELETE' });
 
             delete dbTitles[currentClassID];
             delete dbRosters[currentClassID];
@@ -848,17 +590,14 @@
             localStorage.removeItem(`mySeat_403_${currentClassID}`); 
 
             alert("✅ 班期資料已徹底清除！將自動回到乾淨首頁。");
+
             window.location.replace(window.location.pathname);
 
         } catch (error) {
-            console.error('清除失敗:', error);
             alert("清除失敗，請檢查網路連線！");
         }
     }
 
-    /**
-     * 處理座位點擊
-     */
     function handleSeatClick(seatCode) {
         if (!currentClassID) {
             alert("目前尚未由後台載入班期。請先由管理員至後台貼入名冊開班！");
@@ -869,7 +608,7 @@
         const existingName = studentFilledData[seatCode] || "";
         const myBookedSeat = localStorage.getItem(`mySeat_403_${currentClassID}`); 
         
-        document.getElementById("targetSeatLabel").innerText = `座位 ${escapeHTML(seatCode)}`;
+        document.getElementById("targetSeatLabel").innerText = `座位 ${seatCode}`;
         document.getElementById("studentName").value = existingName;
         
         if (existingName) {
@@ -892,16 +631,8 @@
         document.getElementById("seatModal").style.display = "flex";
     }
 
-    /**
-     * 關閉座位選擇彈窗
-     */
-    function closeSelectModal() { 
-        document.getElementById("seatModal").style.display = "none"; 
-    }
+    function closeSelectModal() { document.getElementById("seatModal").style.display = "none"; }
 
-    /**
-     * 清除當前座位
-     */
     async function clearCurrentSeat() {
         if (confirm(`確定要取消您的座位嗎？`)) {
             delete studentFilledData[activeSeatId];
@@ -912,17 +643,11 @@
         }
     }
 
-    /**
-     * 保存學生座位
-     */
     async function saveStudentSeat() {
         const rawName = document.getElementById("studentName").value.trim();
-        const name = escapeHTML(rawName);
+        const name = escapeHTML(rawName); // ★ 套用消毒
 
-        if (!name) { 
-            alert("請輸入姓名！"); 
-            return; 
-        }
+        if (!name) { alert("請輸入姓名！"); return; }
 
         const myBookedSeat = localStorage.getItem(`mySeat_403_${currentClassID}`);
         if (myBookedSeat && myBookedSeat !== activeSeatId) {
@@ -931,11 +656,8 @@
         }
 
         try {
-            const noCacheUrl = `${FIREBASE_URL}/room403/${encodeURIComponent(currentClassID)}/seats.json?t=${new Date().getTime()}`;
-            const res = await fetch(noCacheUrl, { 
-                cache: "no-store",
-                credentials: "omit"
-            });
+            const noCacheUrl = `${FIREBASE_URL}/room403/${currentClassID}/seats.json?t=${new Date().getTime()}`;
+            const res = await fetch(noCacheUrl, { cache: "no-store" });
             const latestClassData = await res.json() || {};
 
             if (latestClassData[activeSeatId]) {
@@ -945,9 +667,7 @@
                 closeSelectModal();
                 return;
             }
-        } catch(e) {
-            console.error('檢查座位狀態失敗:', e);
-        }
+        } catch(e) {}
 
         studentFilledData[activeSeatId] = name;
         localStorage.setItem(`mySeat_403_${currentClassID}`, activeSeatId); 
@@ -957,30 +677,15 @@
         await updateCloudSeat(activeSeatId, name);
     }
 
-    /**
-     * 管理員強制指派座位
-     */
     async function adminForceAssignSeat() {
-        if (!currentClassID) { 
-            alert("請先啟動班期！"); 
-            return; 
-        }
+        if (!currentClassID) { alert("請先啟動班期！"); return; }
         const seatId = document.getElementById("modSeatId").value.trim();
         const rawName = document.getElementById("modStudentName").value.trim();
-        const studentName = escapeHTML(rawName);
+        const studentName = escapeHTML(rawName); // ★ 套用消毒
 
-        if (!seatId || !studentName) { 
-            alert("請輸入座位編號與姓名！"); 
-            return; 
-        }
-        if (!/^([1-9])-([1-4])$/.test(seatId)) { 
-            alert("座位格式錯誤 (403教室正確為 1-1 到 9-4)！"); 
-            return; 
-        }
-        if (seatId === "9-1") { 
-            alert("9-1 為固定志工/報到席，不可指派。"); 
-            return; 
-        }
+        if (!seatId || !studentName) { alert("請輸入座位編號與姓名！"); return; }
+        if (!/^([1-9])-([1-4])$/.test(seatId)) { alert("座位格式錯誤 (403教室正確為 1-1 到 9-4)！"); return; }
+        if (seatId === "9-1") { alert("9-1 為固定志工/報到席，不可指派。"); return; }
 
         studentFilledData[seatId] = studentName;
         renderSeatsGrid();
@@ -988,40 +693,25 @@
         
         document.getElementById("modSeatId").value = "";
         document.getElementById("modStudentName").value = "";
-        alert(`【強制更新】座位 ${escapeHTML(seatId)} 已寫入「${escapeHTML(studentName)}」。`);
+        alert(`【強制更新】座位 ${seatId} 已寫入「${studentName}」。`);
     }
 
-    /**
-     * 管理員強制清除座位
-     */
     async function adminForceClearSeat() {
-        if (!currentClassID) { 
-            alert("請先啟動班期！"); 
-            return; 
-        }
+        if (!currentClassID) { alert("請先啟動班期！"); return; }
         const seatId = document.getElementById("modSeatId").value.trim();
-        if (!seatId) { 
-            alert("請輸入座位編號！"); 
-            return; 
-        }
+        if (!seatId) { alert("請輸入座位編號！"); return; }
 
-        if (confirm(`確定要強制清除座位 ${escapeHTML(seatId)} 嗎？`)) {
+        if (confirm(`確定要強制清除座位 ${seatId} 嗎？`)) {
             delete studentFilledData[seatId];
             renderSeatsGrid();
             await updateCloudSeat(seatId, null);
             document.getElementById("modSeatId").value = "";
-            alert(`【強制清除】座位 ${escapeHTML(seatId)} 已清空。`);
+            alert(`【強制清除】座位 ${seatId} 已清空。`);
         }
     }
 
-    /**
-     * 驗證填寫座位
-     */
     function verifyFilledSeats() {
-        if (!currentClassID || officialRoster.length === 0) { 
-            alert("請先貼入名冊建立班期！"); 
-            return; 
-        }
+        if (!currentClassID || officialRoster.length === 0) { alert("請先貼入名冊建立班期！"); return; }
         isVerifyVisualOn = true;
         renderSeatsGrid(); 
 
@@ -1038,59 +728,37 @@
         const report = document.getElementById("adminReport");
         report.style.display = "block";
         report.innerHTML = `
-            <strong>📊 班期 [${escapeHTML(currentClassID)}] 即時核實對比報告：</strong><br>
+            <strong>📊 班期 [${currentClassID}] 即時核實對比報告：</strong><br>
             • 官方應到人數：${officialRoster.length} 人<br>
             • 現場已填座位：${filledNames.length} 人<br>
             • <span style="color:green; font-weight:bold;">符合官方名冊：${matchCount} 人 (綠色)</span><br>
-            • <span style="color:red; font-weight:bold;">名字不符/查無此人：${errorNames.length} 人 (紅色) ${errorNames.length > 0 ? `[${errorNames.map(n => escapeHTML(n)).join('、')}]` : ''}</span><br>
-            • <span>應到未選位：${missingStudents.length} 人 [${missingStudents.length > 0 ? missingStudents.map(n => escapeHTML(n)).join('、') : '無'}]</span>
+            • <span style="color:red; font-weight:bold;">名字不符/查無此人：${errorNames.length} 人 (紅色) ${errorNames.length > 0 ? `[${errorNames.join('、')}]` : ''}</span><br>
+            • <span>應到未選位：${missingStudents.length} 人 [${missingStudents.length > 0 ? missingStudents.join('、') : '無'}]</span>
         `;
     }
 
-    /**
-     * 清除驗證狀態
-     */
     function clearVerificationStatus() {
         isVerifyVisualOn = false;
         document.getElementById("adminReport").style.display = "none";
         renderSeatsGrid();
     }
 
-    /**
-     * 匯出當前班期座位表
-     */
     function exportCurrentClassSeats() {
-        if (!currentClassID) { 
-            alert("目前沒有班期資料可供列印。"); 
-            return; 
-        }
+        if (!currentClassID) { alert("目前沒有班期資料可供列印。"); return; }
         window.print();
     }
 
-    /**
-     * 頁面載入初始化
-     */
     window.onload = async function() {
-        'use strict';
-
         try {
             const noCacheUrl = `${FIREBASE_URL}/settings/pwd_403.json?t=${new Date().getTime()}`;
-            const pwdRes = await fetch(noCacheUrl, { 
-                cache: "no-store",
-                credentials: "omit"
-            });
-            if (!pwdRes.ok) throw new Error(`HTTP ${pwdRes.status}`);
-        } catch(e) {
-            console.error('無法預加載密碼:', e);
-        }
+            const pwdRes = await fetch(noCacheUrl, { cache: "no-store" });
+            const pwdData = await pwdRes.json();
+            if (pwdData) adminPassword = pwdData;
+        } catch(e) {}
 
         if (currentClassID) {
             try {
-                const tRes = await fetch(`${FIREBASE_URL}/room403/${encodeURIComponent(currentClassID)}/title.json?t=${new Date().getTime()}`, { 
-                    cache: "no-store",
-                    credentials: "omit"
-                });
-                if (!tRes.ok) throw new Error(`HTTP ${tRes.status}`);
+                const tRes = await fetch(`${FIREBASE_URL}/room403/${currentClassID}/title.json?t=${new Date().getTime()}`, { cache: "no-store" });
                 const tData = await tRes.json();
                 
                 if(tData === null) {
@@ -1107,25 +775,16 @@
                     classHeaderTitle = tData;
                     dbTitles[currentClassID] = classHeaderTitle;
                 }
-            } catch(e){
-                console.error('讀取班期標題失敗:', e);
-            }
+            } catch(e){}
 
             try {
-                const rRes = await fetch(`${FIREBASE_URL}/room403/${encodeURIComponent(currentClassID)}/roster.json?t=${new Date().getTime()}`, { 
-                    cache: "no-store",
-                    credentials: "omit"
-                });
-                if (rRes.ok) {
-                    const rData = await rRes.json();
-                    if(rData) {
-                        officialRoster = rData;
-                        dbRosters[currentClassID] = officialRoster;
-                    }
+                const rRes = await fetch(`${FIREBASE_URL}/room403/${currentClassID}/roster.json?t=${new Date().getTime()}`, { cache: "no-store" });
+                const rData = await rRes.json();
+                if(rData) {
+                    officialRoster = rData;
+                    dbRosters[currentClassID] = officialRoster;
                 }
-            } catch(e){
-                console.error('讀取名冊失敗:', e);
-            }
+            } catch(e){}
 
             renderSeatsGrid();
             startRealtimeSync();
