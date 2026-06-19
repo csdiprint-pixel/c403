@@ -10,6 +10,9 @@
             --border-color: #707070;
             --booked-bg: #e8f4f8;
             --booked-text: #2c3e50;
+            --my-seat-bg: #d4edda;
+            --my-seat-text: #155724;
+            --my-seat-border: #28a745;
             --volunteer-bg: #fff2cc;
             --volunteer-text: #d68910;
             --status-match: #d4edda;
@@ -40,7 +43,16 @@
 
         .seat-table { border-collapse: separate; border-spacing: 5px; min-width: 300px; }
         .seat-table td { border: 1px solid var(--border-color); text-align: center; vertical-align: middle; width: 75px; height: 50px; font-size: 13px; font-weight: bold; background-color: #fff; cursor: pointer; border-radius: 4px; }
-        .seat-table td.booked { background-color: var(--booked-bg); color: var(--booked-text); }
+        .seat-table td.booked { background-color: var(--booked-bg); color: var(--booked-text); border-color: #8aa4b7; }
+        
+        .seat-table td.my-seat { 
+            background-color: var(--my-seat-bg) !important; 
+            color: var(--my-seat-text) !important; 
+            border: 2px solid var(--my-seat-border) !important; 
+            box-shadow: 0 0 6px rgba(40,167,69,0.4);
+            font-size: 14px;
+        }
+
         .seat-table td.verified-match { background-color: var(--status-match) !important; color: #155724 !important; border-color: #c3e6cb; }
         .seat-table td.verified-error { background-color: var(--status-mismatch) !important; color: #721c24 !important; border-color: #f5c6cb; }
         .seat-table td.volunteer-seat { background-color: var(--volunteer-bg); color: var(--volunteer-text); border: 1px solid var(--volunteer-text); font-size: 12px; cursor: default; }
@@ -240,7 +252,6 @@
     let officialRoster = dbRosters[currentClassID] || [];
     let studentFilledData = {}; 
 
-    // ★ 輔助函數：姓名遮罩轉換
     function maskName(name) {
         if (!name) return "";
         if (name.length === 2) return name[0] + "Ｏ";
@@ -284,6 +295,7 @@
         });
     }
 
+    // ★ 關鍵修復 1：即時踢出連線中的使用者
     function startRealtimeSync() {
         if (!currentClassID) return;
         
@@ -294,6 +306,19 @@
             const data = JSON.parse(event.data);
             
             if (data && data.path === "/") {
+                // 如果接收到的資料是 null，代表整個班期或座位表已被刪除
+                if (data.data === null) {
+                    alert("⚠️ 此班期已被管理員強制關閉並清除資料！自動返回首頁。");
+                    delete dbTitles[currentClassID];
+                    delete dbRosters[currentClassID];
+                    localStorage.setItem("seat_db_titles_403", JSON.stringify(dbTitles));
+                    localStorage.setItem("seat_db_rosters_403", JSON.stringify(dbRosters));
+                    localStorage.removeItem(`mySeat_403_${currentClassID}`);
+                    
+                    // 強制洗掉網址列上的 ?class= 參數
+                    window.location.replace(window.location.pathname);
+                    return;
+                }
                 studentFilledData = data.data || {};
             } else if (data && data.path) {
                 const cleanKey = data.path.replace("/", "");
@@ -343,7 +368,7 @@
                 document.getElementById("navToggleBtn").innerText = "返回前台";
                 currentPage = "admin";
                 renderClassHistory();
-                renderSeatsGrid(); // 切換到後台時重新渲染，以顯示全名
+                renderSeatsGrid(); 
             } else {
                 document.getElementById("adminAccountInput").value = ""; 
                 document.getElementById("adminPasswordInput").value = "";
@@ -351,12 +376,11 @@
                 document.getElementById("adminAccountInput").focus();
             }
         } else {
-            // 目前在後台，切換回前台
             document.getElementById("adminPage").classList.remove("active");
             document.getElementById("studentPage").classList.add("active");
             document.getElementById("navToggleBtn").innerText = "管理後台";
             currentPage = "student";
-            renderSeatsGrid(); // 切換回前台重新渲染，套用遮罩
+            renderSeatsGrid(); 
         }
     }
 
@@ -414,7 +438,7 @@
 
             if (currentClassID) generateClassQRCode(currentClassID);
             renderClassHistory(); 
-            renderSeatsGrid(); // 登入後台重繪，顯示全名
+            renderSeatsGrid(); 
         } else {
             alert("密碼錯誤！");
         }
@@ -441,7 +465,6 @@
         let html = "";
 
         const myBookedSeat = localStorage.getItem(`mySeat_403_${currentClassID}`);
-        // ★ 修改處：不依賴 isAdmin，而是直接判斷目前是否在「前台畫面」
         const isBackend = (currentPage === "admin");
 
         for (let row = 1; row <= 9; row++) {
@@ -452,16 +475,17 @@
                 } else {
                     const seatCode = `${row}-${col}`;
                     const name = studentFilledData[seatCode];
+                    const isMySeat = (seatCode === myBookedSeat);
                     
                     if (name) {
-                        let tdClass = "booked";
+                        let tdClass = isMySeat ? "booked my-seat" : "booked";
+                        
                         if (isVerifyVisualOn) {
                             tdClass = officialRoster.includes(name) ? "verified-match" : "verified-error";
                         }
                         
                         let displayName = name;
-                        // ★ 只要不是在管理員後台，且不是自己綁定的座位，就遮罩
-                        if (!isBackend && seatCode !== myBookedSeat) {
+                        if (!isBackend && !isMySeat) {
                             displayName = maskName(name);
                         }
 
@@ -540,6 +564,7 @@
         });
     }
 
+    // ★ 關鍵修復 2：按鈕清除後強制用 replace 覆蓋網址歷史，絕對不留痕跡
     async function clearCurrentClassData() {
         if (!currentClassID) {
             alert("目前沒有載入任何班期！");
@@ -558,10 +583,10 @@
             localStorage.setItem("seat_db_rosters_403", JSON.stringify(dbRosters));
             localStorage.removeItem(`mySeat_403_${currentClassID}`); 
 
-            alert("✅ 班期資料已徹底清除！將自動回到空白首頁。");
+            alert("✅ 班期資料已徹底清除！將自動回到乾淨首頁。");
 
-            const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
-            window.location.href = baseUrl;
+            // 使用 location.replace 強制覆寫當前網址歷史，拔除 ?class= 參數
+            window.location.replace(window.location.pathname);
 
         } catch (error) {
             alert("清除失敗，請檢查網路連線！");
@@ -715,7 +740,7 @@
         window.print();
     }
 
-    // 啟動程序
+    // ★ 關鍵修復 3：啟動時檢查雲端，若班期已被刪除，強制洗白網址並導回首頁
     window.onload = async function() {
         try {
             const noCacheUrl = `${FIREBASE_URL}/settings/pwd_403.json?t=${new Date().getTime()}`;
@@ -726,9 +751,23 @@
 
         if (currentClassID) {
             try {
+                // 檢查雲端這筆班期資料是否還活著
                 const tRes = await fetch(`${FIREBASE_URL}/classes/${currentClassID}/title.json?t=${new Date().getTime()}`, { cache: "no-store" });
                 const tData = await tRes.json();
-                if(tData) {
+                
+                // 如果回傳 null，代表這個代碼的班期已經被清除了
+                if(tData === null) {
+                    alert("⛔ 此班期代碼已失效或資料已被徹底清除！自動導回首頁。");
+                    delete dbTitles[currentClassID];
+                    delete dbRosters[currentClassID];
+                    localStorage.setItem("seat_db_titles_403", JSON.stringify(dbTitles));
+                    localStorage.setItem("seat_db_rosters_403", JSON.stringify(dbRosters));
+                    localStorage.removeItem(`mySeat_403_${currentClassID}`);
+                    
+                    // 強制用乾淨網址覆寫，抹除歷史紀錄
+                    window.location.replace(window.location.pathname);
+                    return; // 終止後續執行
+                } else {
                     classHeaderTitle = tData;
                     dbTitles[currentClassID] = classHeaderTitle;
                 }
