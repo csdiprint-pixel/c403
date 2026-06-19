@@ -106,7 +106,7 @@
 <body>
 
     <div class="nav-bar">
-        <span>選位系統 (403教室)</span>
+        <span>公務人力發展中心選位系統 (403教室)</span>
         <button class="nav-btn" id="navToggleBtn" onclick="openLoginModal()">管理後台</button>
     </div>
 
@@ -146,8 +146,8 @@
             </div>
             
             <div class="form-group">
-                <label>【步驟一】請複製 Word 名冊內的「所有文字」並貼在下方：</label>
-                <textarea id="rawRosterInput" rows="5" placeholder="請在 Word 檔案中按 Ctrl+A 全選、Ctrl+C 複製，然後直接在此貼上..."></textarea>
+                <label>【步驟一】請輸入「班期名稱」與「純學員姓名」並貼在下方：</label>
+                <textarea id="rawRosterInput" rows="5" placeholder="例：&#10;115552「公文寫作班」 受訓日期：113年5月20日&#10;王小明&#10;陳大明..."></textarea>
             </div>
 
             <button class="btn-admin-act btn-blue" onclick="processRosterText()">【步驟二】一鍵解析並啟動新班期</button>
@@ -208,7 +208,7 @@
             <p style="font-size: 13px; color: #666; margin: 0 0 10px 0;">請輸入管理者帳號與密碼：</p>
             <form onsubmit="event.preventDefault(); submitLogin();">
                 <input type="text" id="adminAccountInput" placeholder="請輸入帳號" style="margin-bottom: 5px;" required>
-                <input type="password" id="adminPasswordInput" placeholder="請輸入密碼" required>
+                <input type="password" id="adminPasswordInput" placeholder="請輸入密碼 (預設: 403)" required>
                 <div class="modal-btns">
                     <button type="button" class="btn" onclick="closeLoginModal()">取消</button>
                     <button type="submit" class="btn btn-ok">登入</button>
@@ -236,7 +236,7 @@
     </div>
 
 <script>
-    // ★ 毒素過濾器已移至正確位置
+    // 毒素過濾器 
     function escapeHTML(str) {
         if (!str) return "";
         return str.replace(/[&<>'"]/g, function(tag) {
@@ -245,6 +245,7 @@
         });
     }
 
+    // 專屬資料庫網址
     const FIREBASE_URL = "https://csdi-seating-system-default-rtdb.asia-southeast1.firebasedatabase.app";
 
     let currentPage = "student"; 
@@ -304,7 +305,6 @@
         });
     }
 
-    // ★ 已將路徑獨立改為 room403
     function startRealtimeSync() {
         if (!currentClassID) return;
         
@@ -530,17 +530,23 @@
             currentClassID = classCode;
             classHeaderTitle = `${classCode}${className}-${formattedDate}`;
 
-            const cleanText = text.replace(/高雄市政府公務人力發展中心/g, " ").replace(/主任|秘書|組長|副研究員|輔導員|組員|助理員|技士|辦事員|駐衛隊員|技工|駕駛|工友/g, " ");
-            const tokens = cleanText.split(/[\s\t\n\r ]+/);
-            const excludeWords = ["座號", "機關學校", "職稱", "姓名", "受訓日期", "至", "共", "小時", "學員名冊", "班期", "從檢測到防禦的完整漏洞管理流程座位表"];
+            // 純淨版解析邏輯：不處理雜亂職稱，僅依賴管理員貼上乾淨名單
+            const tokens = text.split(/[\s\t\n\r,，、]+/);
             const nameSet = new Set();
             const nameRegex = /^[\u4e00-\u9fa5]{2,4}$/;
-
+            
             tokens.forEach(token => {
                 const clean = token.trim();
-                if (nameRegex.test(clean) && !excludeWords.includes(clean) && !clean.includes("年") && !clean.includes("月") && !clean.includes("日")) nameSet.add(clean);
+                if (nameRegex.test(clean) && !clean.includes("年") && !clean.includes("月") && !clean.includes("日") && !clean.includes("班") && clean !== "姓名" && clean !== "座號" && clean !== "受訓日期") {
+                    nameSet.add(clean);
+                }
             });
             officialRoster = Array.from(nameSet);
+
+            if (officialRoster.length === 0) {
+                alert("警告：未抓取到任何有效姓名！請確認貼上的文字包含學員姓名。");
+                return;
+            }
 
             dbTitles[currentClassID] = classHeaderTitle;
             dbRosters[currentClassID] = officialRoster;
@@ -551,10 +557,10 @@
             await fetch(`${FIREBASE_URL}/room403/${currentClassID}/roster.json`, { method: 'PUT', body: JSON.stringify(officialRoster) });
 
             const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
-            alert(`【開班成功】\n403教室班期 ${currentClassID} 已完成建立！`);
+            alert(`【開班成功】\n403教室班期 ${currentClassID} 已完成建立！\n共匯入 ${officialRoster.length} 名學員。`);
             window.location.href = `${baseUrl}?class=${currentClassID}`;
 
-        } catch (err) { alert("解析錯誤，請確認文字內包含完整的名冊結構。"); }
+        } catch (err) { alert("解析錯誤，請確認文字內容。"); }
     }
 
     function generateClassQRCode(classId) {
@@ -645,7 +651,7 @@
 
     async function saveStudentSeat() {
         const rawName = document.getElementById("studentName").value.trim();
-        const name = escapeHTML(rawName); // ★ 套用消毒
+        const name = escapeHTML(rawName); // 套用消毒
 
         if (!name) { alert("請輸入姓名！"); return; }
 
@@ -681,7 +687,7 @@
         if (!currentClassID) { alert("請先啟動班期！"); return; }
         const seatId = document.getElementById("modSeatId").value.trim();
         const rawName = document.getElementById("modStudentName").value.trim();
-        const studentName = escapeHTML(rawName); // ★ 套用消毒
+        const studentName = escapeHTML(rawName); // 套用消毒
 
         if (!seatId || !studentName) { alert("請輸入座位編號與姓名！"); return; }
         if (!/^([1-9])-([1-4])$/.test(seatId)) { alert("座位格式錯誤 (403教室正確為 1-1 到 9-4)！"); return; }
