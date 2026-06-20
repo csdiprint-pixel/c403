@@ -217,7 +217,7 @@
             
             <div class="form-group">
                 <label>【步驟一】請上傳名冊檔案 (支援 Word / Excel)，系統將自動擷取：</label>
-                <input type="file" id="rosterFileInput" class="file-upload-input" accept=".docx, .xlsx, .xls, .csv">
+                <input type="file" id="rosterFileInput" class="file-upload-input" accept=".doc, .docx, .xlsx, .xls, .csv">
                 
                 <textarea id="rawRosterInput" rows="4" placeholder="檔案內容解析後會顯示於此，以便您核對。您也可以手動在此貼上文字..."></textarea>
             </div>
@@ -333,7 +333,7 @@
     let studentFilledData = {}; 
 
     // ==========================================
-    // 檔案自動上傳與解析邏輯 (Word & Excel)
+    // 檔案自動上傳與解析邏輯 (Word & Excel) - 包含 .doc 攔截
     // ==========================================
     document.getElementById('rosterFileInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -345,7 +345,7 @@
 
         outputBox.value = "⏳ 檔案讀取與解析中，請稍候...";
 
-        // 處理 Word 文件 (.docx)
+        // 處理新版 Word 文件 (.docx)
         if (fileName.endsWith('.docx')) {
             reader.onload = function(event) {
                 mammoth.extractRawText({arrayBuffer: event.target.result})
@@ -360,6 +360,17 @@
             };
             reader.readAsArrayBuffer(file);
         } 
+        // 🛑 專屬攔截：處理舊版 Word 文件 (.doc) 的降級體驗
+        else if (fileName.endsWith('.doc')) {
+            outputBox.value = "";
+            alert("⚠️ 系統偵測到舊版 Word (.doc) 格式！\n\n受限於網頁瀏覽器安全限制，系統無法「自動」解析舊版二進制檔案。\n\n👉 替代方案：\n請直接打開該檔案，將內容【全選並複製】，直接【貼在下方的文字方塊】中，系統一樣會幫您智能抓取姓名！");
+            
+            // 將游標自動跳到輸入框，並改變提示文字引導使用者
+            outputBox.placeholder = "請將 .doc 檔案內的文字複製後，直接貼在這裡...";
+            outputBox.focus(); 
+            
+            e.target.value = ''; // 清空上傳區，允許下次操作
+        }
         // 處理 Excel 文件 (.xlsx, .xls) 或 CSV
         else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
             reader.onload = function(event) {
@@ -387,7 +398,8 @@
             reader.readAsArrayBuffer(file);
         } else {
             outputBox.value = "";
-            alert("⚠️ 不支援的檔案格式！\n請上傳 .docx 或 .xlsx 的檔案。");
+            alert("⚠️ 不支援的檔案格式！\n請上傳 .doc, .docx, .xlsx, .xls 或 .csv 的檔案。");
+            e.target.value = '';
         }
     });
 
