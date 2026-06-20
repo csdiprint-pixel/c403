@@ -134,69 +134,73 @@
             .class-info-header { font-size: 24px; }
         }
         /* =================================================== */
-        /* 手機版響應式設計 (RWD)：自適應螢幕比例，完整顯示全座位 */
+        /* 手機版響應式設計 (RWD)：強制鎖定比例，完整顯示全座位 */
         /* =================================================== */
         @media (max-width: 768px) {
-            body { font-size: 3.5vw; padding: 2vw; }
+            body { padding: 2vw; }
             
-            /* 導覽列縮放 */
+            /* 導覽列與容器縮放 */
             .nav-bar { padding: 3vw; margin: -2vw -2vw 4vw -2vw; }
-            .nav-bar span { font-size: 4.5vw; }
-            .nav-btn { font-size: 3.5vw; padding: 2vw 4vw; border-radius: 1.5vw; border-width: 1px; }
+            .nav-bar span { font-size: 5vw; }
+            .nav-btn { font-size: 4vw; padding: 2vw 3vw; }
+            .main-container { padding: 3vw 2vw; }
+            .class-info-header { font-size: 4.5vw; margin-bottom: 4vw; }
+            .scroll-hint { display: none; } /* 隱藏滑動提示 */
 
-            /* 主容器與標題縮放 */
-            .main-container { padding: 4vw 3vw; border-radius: 3vw; }
-            .class-info-header { font-size: 5vw; margin-bottom: 4vw; }
+            /* 講台區 */
+            .stage-area { margin: 2vw 0 4vw 0; }
+            .stage-box { padding: 2vw 10vw; font-size: 4.5vw; border-width: 2px; }
+
+            /* 網格與門口標示 */
+            .classroom-grid { width: 100%; margin-top: 2vw; padding-bottom: 2vw; box-sizing: border-box; }
+            .door-notice-left { width: 6vw; font-size: 3.5vw; margin-right: 2vw; justify-content: space-around; }
+
+            /* ================================================= */
+            /* 關鍵修復：強制表格鎖定佈局，座位大小才會完全一致 */
+            /* ================================================= */
+            .seat-table { 
+                min-width: unset !important; /* 解除原本的 900px 限制 */
+                width: 100%; 
+                table-layout: fixed; /* 強制所有座位均分寬度，無視文字長度 */
+                border-spacing: 1vw; 
+            }
             
-            /* 隱藏滑動提示 (畫面已能完整顯示) */
-            .scroll-hint { display: none; }
-
-            /* 講台區縮放 */
-            .stage-area { margin: 3vw 0 5vw 0; }
-            .stage-box { padding: 2vw 10vw; font-size: 5vw; border-width: 2px; }
-
-            /* 教室網格與門口標示 */
-            .classroom-grid { padding-bottom: 2vw; margin-top: 2vw; overflow-x: hidden; }
-            .door-notice-left { width: 8vw; font-size: 3.5vw; margin-right: 2vw; justify-content: space-around; }
-
-            /* 座位表整體寬度與間距 */
-            .seat-table { min-width: 100%; border-spacing: 1vw; }
-            
-            /* 座位格等比例縮小 (使用 vw 單位) */
+            /* 座位格統一大小 */
             .seat-table td { 
                 width: auto; 
-                height: 10vw; 
-                font-size: 3.5vw; 
+                height: 12vw; 
+                font-size: 3.2vw; 
                 border-width: 2px; 
                 border-radius: 1.5vw; 
+                padding: 1vw;
+                word-break: break-all; /* 強制長名字換行，防止撐破格子 */
+                line-height: 1.2;
+                overflow: hidden;
             }
-            .seat-table td.my-seat { font-size: 4vw; border-width: 3px !important; }
-            .seat-table td.volunteer-seat { font-size: 3vw; }
             
-            /* 走道等比例縮小 */
-            .seat-table td.aisle { width: 4vw; }
+            /* 走道獨立縮小 (使用百分比或vw皆可) */
+            .seat-table td.aisle { 
+                width: 4vw !important; 
+            }
 
-            /* 彈出視窗隨手機比例調整 */
+            .seat-table td.my-seat { font-size: 3.5vw; border-width: 2px !important; }
+            .seat-table td.volunteer-seat { font-size: 2.8vw; }
+
+            /* 彈出視窗與後台元件隨比例調整 */
             .modal-body { width: 90%; padding: 5vw; border-radius: 3vw; }
             .modal-body h3 { font-size: 6vw; margin-bottom: 3vw; }
-            #targetSeatLabel { font-size: 7vw !important; }
+            #targetSeatLabel { font-size: 6vw !important; }
             .modal-notice-box { font-size: 3.5vw; padding: 3vw; margin: 3vw 0; }
             #inputLabelText { font-size: 4vw !important; margin: 3vw 0 2vw 0; }
             .modal-body input { padding: 3vw; margin: 3vw 0; font-size: 4vw; border-width: 2px; border-radius: 2vw; }
             .modal-btns { margin-top: 4vw; gap: 3vw; }
             .btn { padding: 3vw; font-size: 4vw; border-width: 2px; border-radius: 2vw; }
             
-            /* 後台樣式隨手機比例調整 */
             .admin-box { padding: 4vw; }
             .admin-box h3 { font-size: 5.5vw; padding-left: 2vw; border-left-width: 1.5vw; }
             .form-group label { font-size: 4vw; }
             .form-group textarea { font-size: 4vw; padding: 3vw; border-width: 2px; }
             .btn-admin-act { font-size: 4vw; padding: 3vw; margin-bottom: 3vw; }
-            .qrcode-container { padding: 5vw; margin: 4vw 0; }
-            .qrcode-container strong { font-size: 4.5vw !important; }
-            .admin-modification-box h4, .pwd-section h4 { font-size: 4.5vw !important; }
-            .admin-modification-box label, .pwd-section label { font-size: 3.8vw !important; }
-            .admin-modification-box input, .pwd-section input { font-size: 4vw !important; padding: 3vw !important; }
         }
     </style>
 </head>
