@@ -134,73 +134,84 @@
             .class-info-header { font-size: 24px; }
         }
         /* =================================================== */
-        /* 手機版響應式設計 (RWD)：強制鎖定比例，完整顯示全座位 */
+        /* 手機版完美修復：維持電腦版座位比例與字體，僅縮窄走道 */
         /* =================================================== */
         @media (max-width: 768px) {
-            body { padding: 2vw; }
-            
-            /* 導覽列與容器縮放 */
-            .nav-bar { padding: 3vw; margin: -2vw -2vw 4vw -2vw; }
-            .nav-bar span { font-size: 5vw; }
-            .nav-btn { font-size: 4vw; padding: 2vw 3vw; }
-            .main-container { padding: 3vw 2vw; }
-            .class-info-header { font-size: 4.5vw; margin-bottom: 4vw; }
-            .scroll-hint { display: none; } /* 隱藏滑動提示 */
+            /* 1. 隱藏手機版滑動提示，因為畫面已經完整呈現 */
+            .scroll-hint { display: none !important; }
 
-            /* 講台區 */
-            .stage-area { margin: 2vw 0 4vw 0; }
-            .stage-box { padding: 2vw 10vw; font-size: 4.5vw; border-width: 2px; }
-
-            /* 網格與門口標示 */
-            .classroom-grid { width: 100%; margin-top: 2vw; padding-bottom: 2vw; box-sizing: border-box; }
-            .door-notice-left { width: 6vw; font-size: 3.5vw; margin-right: 2vw; justify-content: space-around; }
-
-            /* ================================================= */
-            /* 關鍵修復：強制表格鎖定佈局，座位大小才會完全一致 */
-            /* ================================================= */
-            .seat-table { 
-                min-width: unset !important; /* 解除原本的 900px 限制 */
-                width: 100%; 
-                table-layout: fixed; /* 強制所有座位均分寬度，無視文字長度 */
-                border-spacing: 1vw; 
-            }
-            
-            /* 座位格統一大小 */
-            .seat-table td { 
-                width: auto; 
-                height: 12vw; 
-                font-size: 3.2vw; 
-                border-width: 2px; 
-                border-radius: 1.5vw; 
-                padding: 1vw;
-                word-break: break-all; /* 強制長名字換行，防止撐破格子 */
-                line-height: 1.2;
-                overflow: hidden;
-            }
-            
-            /* 走道獨立縮小 (使用百分比或vw皆可) */
-            .seat-table td.aisle { 
-                width: 4vw !important; 
+            /* 2. 縮窄走道：放寬座位可分配的空間 */
+            .seat-table td.aisle {
+                width: 10px !important;
+                min-width: 10px !important;
+                max-width: 10px !important;
+                padding: 0 !important;
             }
 
-            .seat-table td.my-seat { font-size: 3.5vw; border-width: 2px !important; }
-            .seat-table td.volunteer-seat { font-size: 2.8vw; }
+            /* 3. 強制座位表維持電腦版總寬度，確保座位與文字絕對不縮窄變形 */
+            .seat-table {
+                width: 900px !important;
+                min-width: 900px !important;
+                table-layout: fixed !important;
+            }
 
-            /* 彈出視窗與後台元件隨比例調整 */
-            .modal-body { width: 90%; padding: 5vw; border-radius: 3vw; }
-            .modal-body h3 { font-size: 6vw; margin-bottom: 3vw; }
-            #targetSeatLabel { font-size: 6vw !important; }
-            .modal-notice-box { font-size: 3.5vw; padding: 3vw; margin: 3vw 0; }
-            #inputLabelText { font-size: 4vw !important; margin: 3vw 0 2vw 0; }
-            .modal-body input { padding: 3vw; margin: 3vw 0; font-size: 4vw; border-width: 2px; border-radius: 2vw; }
-            .modal-btns { margin-top: 4vw; gap: 3vw; }
-            .btn { padding: 3vw; font-size: 4vw; border-width: 2px; border-radius: 2vw; }
+            /* 4. 確保座位內的文字觀感與電腦版完全一致，絕不自動斷行 */
+            .seat-table td:not(.aisle) {
+                white-space: nowrap !important;
+            }
+
+            /* 5. 核心關鍵：將整個教室（含前後門標示）與講台區塊進行整體的等比例縮放 */
+            .classroom-grid, .stage-area {
+                width: 900px !important;
+                margin: 0 auto !important;
+            }
+
+            /* 依據不同手機螢幕寬度，給予精確的縮放比例，讓全部座位完美塞進畫面 */
+            @media (max-width: 360px) {
+                .classroom-grid, .stage-area { zoom: 0.38 !important; }
+            }
+            @media (min-width: 361px) and (max-width: 390px) {
+                .classroom-grid, .stage-area { zoom: 0.41 !important; }
+            }
+            @media (min-width: 391px) and (max-width: 414px) {
+                .classroom-grid, .stage-area { zoom: 0.44 !important; }
+            }
+            @media (min-width: 415px) and (max-width: 440px) {
+                .classroom-grid, .stage-area { zoom: 0.47 !important; }
+            }
+            @media (min-width: 441px) and (max-width: 768px) {
+                .classroom-grid, .stage-area { zoom: 0.65 !important; }
+            }
+
+            /* 6. 優化手機版主容器，防止產生左右不必要的滾動條 */
+            .main-container {
+                padding: 10px 4px !important;
+                overflow-x: hidden !important;
+            }
             
-            .admin-box { padding: 4vw; }
-            .admin-box h3 { font-size: 5.5vw; padding-left: 2vw; border-left-width: 1.5vw; }
-            .form-group label { font-size: 4vw; }
-            .form-group textarea { font-size: 4vw; padding: 3vw; border-width: 2px; }
-            .btn-admin-act { font-size: 4vw; padding: 3vw; margin-bottom: 3vw; }
+            /* 7. 導覽列按鈕適度調整，方便手機點擊 */
+            .nav-bar { padding: 12px 8px !important; }
+            .nav-bar span { font-size: 18px !important; }
+            .nav-btn { font-size: 15px !important; padding: 6px 12px !important; }
+
+            /* 8. 彈出對話視窗還原為正常比例，避免跟著被縮小 */
+            .modal-overlay { zoom: 1 !important; }
+            .modal-body {
+                width: 85% !important;
+                max-width: 360px !important;
+                padding: 20px !important;
+            }
+            .modal-body h3 { font-size: 22px !important; }
+            #targetSeatLabel { font-size: 24px !important; }
+            .modal-body input { font-size: 18px !important; padding: 8px !important; }
+            .btn { font-size: 18px !important; padding: 8px !important; }
+            
+            /* 9. 後台管理區塊優化 */
+            .admin-box { padding: 15px !important; }
+            .admin-box h3 { font-size: 20px !important; }
+            .form-group label { font-size: 16px !important; }
+            .form-group textarea { font-size: 16px !important; }
+            .btn-admin-act { font-size: 16px !important; padding: 10px !important; }
         }
     </style>
 </head>
