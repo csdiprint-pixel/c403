@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>403教室線上即時選位與核實系統</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --border-color: #707070;
@@ -104,7 +106,12 @@
         .admin-box h3 { margin-top: 0; color: #2c3e50; border-left: 8px solid #2980b9; padding-left: 15px; font-size: 32px; }
         .form-group { margin-bottom: 25px; }
         .form-group label { display: block; font-weight: bold; font-size: 24px; margin-bottom: 12px; color: #333; }
-        .form-group textarea { width: 100%; padding: 20px; box-sizing: border-box; border: 3px solid #ccc; border-radius: 8px; font-size: 22px; resize: vertical; }
+        
+        /* 檔案上傳樣式 */
+        .file-upload-input { width: 100%; padding: 15px; border: 3px dashed #2980b9; border-radius: 8px; background-color: #eaf2f8; font-size: 22px; cursor: pointer; box-sizing: border-box; margin-bottom: 15px; color: #2c3e50; }
+        .file-upload-input:hover { background-color: #d4e6f1; }
+
+        .form-group textarea { width: 100%; padding: 20px; box-sizing: border-box; border: 3px solid #ccc; border-radius: 8px; font-size: 22px; resize: vertical; background-color: #f9f9f9;}
         
         .btn-admin-act { width: 100%; padding: 22px; font-size: 26px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; margin-bottom: 20px; letter-spacing: 2px; }
         .btn-blue { background-color: #2980b9; }
@@ -137,80 +144,31 @@
         /* 手機版完美修復：維持電腦版座位比例與字體，僅縮窄走道 */
         /* =================================================== */
         @media (max-width: 768px) {
-            /* 1. 隱藏手機版滑動提示，因為畫面已經完整呈現 */
             .scroll-hint { display: none !important; }
-
-            /* 2. 縮窄走道：放寬座位可分配的空間 */
-            .seat-table td.aisle {
-                width: 10px !important;
-                min-width: 10px !important;
-                max-width: 10px !important;
-                padding: 0 !important;
-            }
-
-            /* 3. 強制座位表維持電腦版總寬度，確保座位與文字絕對不縮窄變形 */
-            .seat-table {
-                width: 900px !important;
-                min-width: 900px !important;
-                table-layout: fixed !important;
-            }
-
-            /* 4. 確保座位內的文字觀感與電腦版完全一致，絕不自動斷行 */
-            .seat-table td:not(.aisle) {
-                white-space: nowrap !important;
-            }
-
-            /* 5. 核心關鍵：將整個教室（含前後門標示）與講台區塊進行整體的等比例縮放 */
-            .classroom-grid, .stage-area {
-                width: 900px !important;
-                margin: 0 auto !important;
-            }
-
-            /* 依據不同手機螢幕寬度，給予精確的縮放比例，讓全部座位完美塞進畫面 */
-            @media (max-width: 360px) {
-                .classroom-grid, .stage-area { zoom: 0.38 !important; }
-            }
-            @media (min-width: 361px) and (max-width: 390px) {
-                .classroom-grid, .stage-area { zoom: 0.41 !important; }
-            }
-            @media (min-width: 391px) and (max-width: 414px) {
-                .classroom-grid, .stage-area { zoom: 0.44 !important; }
-            }
-            @media (min-width: 415px) and (max-width: 440px) {
-                .classroom-grid, .stage-area { zoom: 0.47 !important; }
-            }
-            @media (min-width: 441px) and (max-width: 768px) {
-                .classroom-grid, .stage-area { zoom: 0.65 !important; }
-            }
-
-            /* 6. 優化手機版主容器，防止產生左右不必要的滾動條 */
-            .main-container {
-                padding: 10px 4px !important;
-                overflow-x: hidden !important;
-            }
-            
-            /* 7. 導覽列按鈕適度調整，方便手機點擊 */
+            .seat-table td.aisle { width: 10px !important; min-width: 10px !important; max-width: 10px !important; padding: 0 !important; }
+            .seat-table { width: 900px !important; min-width: 900px !important; table-layout: fixed !important; }
+            .seat-table td:not(.aisle) { white-space: nowrap !important; }
+            .classroom-grid, .stage-area { width: 900px !important; margin: 0 auto !important; }
+            @media (max-width: 360px) { .classroom-grid, .stage-area { zoom: 0.38 !important; } }
+            @media (min-width: 361px) and (max-width: 390px) { .classroom-grid, .stage-area { zoom: 0.41 !important; } }
+            @media (min-width: 391px) and (max-width: 414px) { .classroom-grid, .stage-area { zoom: 0.44 !important; } }
+            @media (min-width: 415px) and (max-width: 440px) { .classroom-grid, .stage-area { zoom: 0.47 !important; } }
+            @media (min-width: 441px) and (max-width: 768px) { .classroom-grid, .stage-area { zoom: 0.65 !important; } }
+            .main-container { padding: 10px 4px !important; overflow-x: hidden !important; }
             .nav-bar { padding: 12px 8px !important; }
             .nav-bar span { font-size: 18px !important; }
             .nav-btn { font-size: 15px !important; padding: 6px 12px !important; }
-
-            /* 8. 彈出對話視窗還原為正常比例，避免跟著被縮小 */
             .modal-overlay { zoom: 1 !important; }
-            .modal-body {
-                width: 85% !important;
-                max-width: 360px !important;
-                padding: 20px !important;
-            }
+            .modal-body { width: 85% !important; max-width: 360px !important; padding: 20px !important; }
             .modal-body h3 { font-size: 22px !important; }
             #targetSeatLabel { font-size: 24px !important; }
             .modal-body input { font-size: 18px !important; padding: 8px !important; }
             .btn { font-size: 18px !important; padding: 8px !important; }
-            
-            /* 9. 後台管理區塊優化 */
             .admin-box { padding: 15px !important; }
             .admin-box h3 { font-size: 20px !important; }
             .form-group label { font-size: 16px !important; }
             .form-group textarea { font-size: 16px !important; }
+            .file-upload-input { font-size: 16px !important; padding: 10px !important; }
             .btn-admin-act { font-size: 16px !important; padding: 10px !important; }
         }
     </style>
@@ -258,11 +216,13 @@
             </div>
             
             <div class="form-group">
-                <label>【步驟一】請複製 Word 名冊內的「所有文字」並貼在下方：</label>
-                <textarea id="rawRosterInput" rows="6" placeholder="請在 Word 檔案中按 Ctrl+A 全選、Ctrl+C 複製，然後直接在此貼上..."></textarea>
+                <label>【步驟一】請上傳名冊檔案 (支援 Word / Excel)，系統將自動擷取：</label>
+                <input type="file" id="rosterFileInput" class="file-upload-input" accept=".docx, .xlsx, .xls, .csv">
+                
+                <textarea id="rawRosterInput" rows="4" placeholder="檔案內容解析後會顯示於此，以便您核對。您也可以手動在此貼上文字..."></textarea>
             </div>
 
-            <button class="btn-admin-act btn-blue" onclick="processRosterText()">【步驟二】一鍵解析並啟動新班期</button>
+            <button class="btn-admin-act btn-blue" onclick="processRosterText()">【步驟二】一鍵建立班期與座位表</button>
             
             <div id="qrcodeWrapper" class="qrcode-container" style="display: none;">
                 <strong style="color: #2c3e50; margin-bottom: 20px; font-size:24px;">📱 當前班期專屬 QR Code (供學員掃描)</strong>
@@ -371,6 +331,65 @@
     let classHeaderTitle = dbTitles[currentClassID] || "403教室線上選位表 (請由管理員自後台載入班期)";
     let officialRoster = dbRosters[currentClassID] || [];
     let studentFilledData = {}; 
+
+    // ==========================================
+    // 檔案自動上傳與解析邏輯 (Word & Excel)
+    // ==========================================
+    document.getElementById('rosterFileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const fileName = file.name.toLowerCase();
+        const reader = new FileReader();
+        const outputBox = document.getElementById('rawRosterInput');
+
+        outputBox.value = "⏳ 檔案讀取與解析中，請稍候...";
+
+        // 處理 Word 文件 (.docx)
+        if (fileName.endsWith('.docx')) {
+            reader.onload = function(event) {
+                mammoth.extractRawText({arrayBuffer: event.target.result})
+                    .then(function(result) {
+                        outputBox.value = result.value;
+                        alert("✅ Word 檔案讀取成功！\n\n系統已將文字解析到下方框內。請確認內容後，點擊【步驟二】建立班期。");
+                    })
+                    .catch(function(err) {
+                        outputBox.value = "";
+                        alert("Word 解析失敗，請確認檔案是否損毀或加密加密：" + err.message);
+                    });
+            };
+            reader.readAsArrayBuffer(file);
+        } 
+        // 處理 Excel 文件 (.xlsx, .xls) 或 CSV
+        else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
+            reader.onload = function(event) {
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    let fullText = "";
+                    
+                    workbook.SheetNames.forEach(sheetName => {
+                        const sheet = workbook.Sheets[sheetName];
+                        // 轉出 CSV 格式文字
+                        fullText += XLSX.utils.sheet_to_csv(sheet) + "\n";
+                    });
+                    
+                    // 將逗號轉為空白，讓後續的抓取邏輯能順利切割
+                    fullText = fullText.replace(/,/g, "  "); 
+                    outputBox.value = fullText;
+                    
+                    alert("✅ Excel 檔案讀取成功！\n\n系統已將文字解析到下方框內。請確認內容後，點擊【步驟二】建立班期。");
+                } catch(err) {
+                    outputBox.value = "";
+                    alert("Excel 解析失敗，請確認檔案格式是否正確：" + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            outputBox.value = "";
+            alert("⚠️ 不支援的檔案格式！\n請上傳 .docx 或 .xlsx 的檔案。");
+        }
+    });
 
     function maskName(name) {
         if (!name) return "";
@@ -618,7 +637,7 @@
 
     async function processRosterText() {
         const text = document.getElementById("rawRosterInput").value;
-        if (!text.trim()) { alert("請先貼入名冊文字內容！"); return; }
+        if (!text.trim()) { alert("請先上傳檔案或貼入名冊內容！"); return; }
 
         try {
             // 1. 擷取班期代碼與名稱
@@ -641,7 +660,7 @@
             currentClassID = classCode;
             classHeaderTitle = `${classCode}${className}-${formattedDate}`;
 
-            // 3. 全新智能解析邏輯：結構化斷點回溯法 (與302同步)
+            // 3. 全新智能解析邏輯：結構化斷點回溯法
             const nameSet = new Set();
             const nameRegex = /^[\u4e00-\u9fa5]{2,4}$/; // 姓名長度限制為 2~4 個中文字
             const excludeHeaders = ["姓名", "座號", "機關", "機關學校", "職稱", "單位", "備註", "受訓日期", "簽到"];
@@ -653,7 +672,7 @@
                 const token = tokens[i].trim();
                 if (!token) continue;
 
-                // 只要遇到「純數字」(代表座號)，就往前結算上一個人的資料
+                // 只要遇到「純數字」(代表座號或序號)，就往前結算上一個人的資料
                 if (/^\d+$/.test(token)) {
                     if (buffer.length > 0) {
                         const possibleName = buffer[buffer.length - 1];
@@ -678,7 +697,7 @@
             officialRoster = Array.from(nameSet);
 
             if (officialRoster.length === 0) {
-                alert("警告：未抓取到任何有效姓名！請確認貼上的文字包含學員姓名。");
+                alert("警告：系統沒有自動抓取到任何姓名！\n請確認檔案內是否有清楚的「座號」搭配「姓名」結構。");
                 return;
             }
 
