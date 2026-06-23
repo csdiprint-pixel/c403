@@ -581,18 +581,16 @@
         table.innerHTML = html;
     }
 
-    async function processRosterText() {
+async function processRosterText() {
         const text = document.getElementById("rawRosterInput").value;
         if (!text.trim()) { alert("請先貼入名冊文字內容！"); return; }
 
         try {
-            // 1. 擷取班期代碼與名稱
             let classCode = "000000";
             let className = "新研習班期";
             const codeMatch = text.match(/(\d{6})[「"']?([^「」"'\s]+)[開班]?[」"']?/);
             if (codeMatch) { classCode = codeMatch[1]; className = `「${codeMatch[2]}」`; }
 
-            // 2. 擷取日期
             let formattedDate = "";
             const dateMatch = text.match(/受訓日期：(\d+)年(\d+)月(\d+)日/);
             if (dateMatch) {
@@ -606,11 +604,13 @@
             currentClassID = classCode;
             classHeaderTitle = `${classCode}${className}-${formattedDate}`;
 
-            // 3. 全新智能解析邏輯：結構化斷點回溯法
-            const nameSet = new Set();
-            const nameRegex = /^[\u4e00-\u9fa5]{2,4}$/; // 姓名長度限制為 2~4 個中文字
-            const excludeHeaders = ["姓名", "座號", "機關", "機關學校", "職稱", "單位", "備註", "受訓日期", "簽到"];
-
+            // 修改點 1：改用陣列 (Array) 儲存，這樣「小叮噹」出現幾次就會抓幾次
+            const extractedNames = [];
+            
+            // 修改點 2：放寬判斷條件，支援 2~8 個字，且允許括號、符號等格式
+            const nameRegex = /^(?=.*[\u4e00-\u9fa5a-zA-Z0-9]).{2,8}$/;
+            
+            const excludeHeaders = ["姓名", "座號", "機關", "機關學校", "職稱", "單位", "備註", "受訓日期", "簽到", "備註欄", "報到簽名", "簽到欄"];
             const tokens = text.split(/[\s\t\n\r,，、]+/);
 
             let buffer = [];
@@ -618,52 +618,48 @@
                 const token = tokens[i].trim();
                 if (!token) continue;
 
-                // 只要遇到「純數字」(代表座號)，就往前結算上一個人的資料
                 if (/^\d+$/.test(token)) {
                     if (buffer.length > 0) {
                         const possibleName = buffer[buffer.length - 1];
                         if (nameRegex.test(possibleName) && !excludeHeaders.includes(possibleName)) {
-                            nameSet.add(possibleName);
+                            extractedNames.push(possibleName);
                         }
                     }
-                    buffer = []; // 清空準備裝下一人
+                    buffer = []; 
                 } else {
                     buffer.push(token);
                 }
             }
             
-            // 結算最後一筆資料
             if (buffer.length > 0) {
                 const possibleName = buffer[buffer.length - 1];
                 if (nameRegex.test(possibleName) && !excludeHeaders.includes(possibleName)) {
-                    nameSet.add(possibleName);
+                    extractedNames.push(possibleName);
                 }
             }
 
-            officialRoster = Array.from(nameSet);
+            officialRoster = extractedNames;
 
             if (officialRoster.length === 0) {
                 alert("警告：未抓取到任何有效姓名！請確認貼上的文字包含學員姓名。");
                 return;
             }
 
-            // 4. 存檔與同步
             dbTitles[currentClassID] = classHeaderTitle;
             dbRosters[currentClassID] = officialRoster;
             
-            localStorage.setItem("seat_db_titles_403", JSON.stringify(dbTitles));
-            localStorage.setItem("seat_db_rosters_403", JSON.stringify(dbRosters));
+            localStorage.setItem("seat_db_titles_502", JSON.stringify(dbTitles));
+            localStorage.setItem("seat_db_rosters_502", JSON.stringify(dbRosters));
 
-            await fetch(`${FIREBASE_URL}/room403/${currentClassID}/title.json`, { method: 'PUT', body: JSON.stringify(classHeaderTitle) });
-            await fetch(`${FIREBASE_URL}/room403/${currentClassID}/roster.json`, { method: 'PUT', body: JSON.stringify(officialRoster) });
+            await fetch(`${FIREBASE_URL}/room502/${currentClassID}/title.json`, { method: 'PUT', body: JSON.stringify(classHeaderTitle) });
+            await fetch(`${FIREBASE_URL}/room502/${currentClassID}/roster.json`, { method: 'PUT', body: JSON.stringify(officialRoster) });
 
             const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
-            alert(`【開班成功】\n403教室班期 ${currentClassID} 已完成建立！\n系統已智能抓取並匯入 ${officialRoster.length} 名學員。`);
+            alert(`【開班成功】\n圖502教室班期 ${currentClassID} 已完成建立！\n系統已抓取 ${officialRoster.length} 名學員（已支援同名同姓）。`);
             window.location.replace(`${baseUrl}?class=${currentClassID}`);
 
         } catch (err) { alert("解析錯誤，請確認文字內容。"); }
     }
-
     function generateClassQRCode(classId) {
         if(!classId) return;
         const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
@@ -823,7 +819,7 @@ function handleSeatClick(seatCode) {
         }
     }
 
-    function verifyFilledSeats() {
+function verifyFilledSeats() {
         if (!currentClassID || officialRoster.length === 0) { alert("請先貼入名冊建立班期！"); return; }
         isVerifyVisualOn = true;
         renderSeatsGrid(); 
@@ -832,12 +828,20 @@ function handleSeatClick(seatCode) {
         let matchCount = 0;
         let errorNames = [];
 
+        // 修改點 3：複製一份名單進行「消去法」，完美核實同名同姓的數量
+        let rosterCheckList = [...officialRoster];
+
         filledNames.forEach(name => {
-            if (officialRoster.includes(name)) matchCount++;
-            else errorNames.push(name);
+            const idx = rosterCheckList.indexOf(name);
+            if (idx !== -1) {
+                matchCount++;
+                rosterCheckList.splice(idx, 1); // 核對成功就從清單中劃掉一位
+            } else {
+                errorNames.push(name);
+            }
         });
 
-        const missingStudents = officialRoster.filter(name => !filledNames.includes(name));
+        const missingStudents = rosterCheckList; // 剩下沒被劃掉的即為缺席
         const report = document.getElementById("adminReport");
         report.style.display = "block";
         report.innerHTML = `
