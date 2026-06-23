@@ -705,7 +705,7 @@
         }
     }
 
-    function handleSeatClick(seatCode) {
+function handleSeatClick(seatCode) {
         if (!currentClassID) {
             alert("目前尚未由後台載入班期。請先由管理員至後台貼入名冊開班！");
             return;
@@ -713,7 +713,13 @@
         activeSeatId = seatCode;
         
         const existingName = studentFilledData[seatCode] || "";
-        const myBookedSeat = localStorage.getItem(`mySeat_403_${currentClassID}`); 
+        const myBookedSeat = localStorage.getItem(`mySeat_102_${currentClassID}`); 
+        const isBackend = (currentPage === "admin"); // 判斷是否為管理員後台
+
+        // 【新增攔截邏輯】如果是前台學生，且點擊的座位已有人，且不是自己的座位 -> 直接無反應不跳視窗
+        if (!isBackend && existingName && myBookedSeat !== seatCode) {
+            return; 
+        }
         
         document.getElementById("targetSeatLabel").innerText = `座位 ${seatCode}`;
         document.getElementById("studentName").value = existingName;
