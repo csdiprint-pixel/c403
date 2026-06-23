@@ -655,7 +655,7 @@ async function processRosterText() {
             await fetch(`${FIREBASE_URL}/room403/${currentClassID}/roster.json`, { method: 'PUT', body: JSON.stringify(officialRoster) });
 
             const baseUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
-            alert(`【開班成功】\n圖403教室班期 ${currentClassID} 已完成建立！\n系統已抓取 ${officialRoster.length} 名學員（已支援同名同姓）。`);
+            alert(`【開班成功】\n403教室班期 ${currentClassID} 已完成建立！\n系統已抓取 ${officialRoster.length} 名學員（已支援同名同姓）。`);
             window.location.replace(`${baseUrl}?class=${currentClassID}`);
 
         } catch (err) { alert("解析錯誤，請確認文字內容。"); }
